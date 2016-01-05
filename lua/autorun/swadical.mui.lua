@@ -27,6 +27,7 @@ if SERVER then
     end
 
     util.AddNetworkString("swadical.mUI.templateSender")
+    util.AddNetworkString("swadical.mUI.templateRefresh")
 
     local function buildTemplateFS()
         TemplateFS = TFS.New("Templates")
@@ -40,10 +41,49 @@ if SERVER then
         net.Broadcast()
     end
 
-    concommand.Add("mui_buildfs",buildTemplateFS)
-    buildTemplateFS()
+    local lastModTime = {}
+    local function recurseTemplateDirRefresh(path,loc)
+        local files,folders = file.Find(path.."*",loc)
 
-    timer.Create("swadical.mUI.rebuild",0.5,0,buildTemplateFS)
+        for _,fileName in ipairs(files) do
+            local filePath = TemplateFS:Dir()..fileName
+            lastModTime[filePath] = lastModTime[filePath] or file.Time(path..fileName,loc)
+
+            if lastModTime[filePath] ~= file.Time(path..fileName,loc) then
+                print("Autoupdated "..filePath)
+                TemplateFS:Write(fileName,file.Read(path..fileName,loc))
+
+                local serialized = bON.serialize({
+                    filePath = filePath,
+                    data = file.Read(path..fileName,loc)
+                })
+                local compressed = util.Compress(serialized)
+
+                net.Start("swadical.mUI.templateRefresh")
+                    net.WriteData(compressed,#compressed)
+                net.Broadcast()
+            end
+
+            lastModTime[filePath] = file.Time(path..fileName,loc)
+        end
+
+        for _,folderName in ipairs(folders) do
+            TemplateFS:CreateDir(folderName)
+            TemplateFS:ChangeDir(folderName)
+            recurseTemplateDirRefresh(path..folderName.."/",loc)
+            TemplateFS:ChangeDir("..")
+        end
+    end
+
+    local function refreshTemplateFS()
+        recurseTemplateDirRefresh("templates/","GAME")
+    end
+
+    concommand.Add("mui_buildfs",refreshTemplateFS)
+    buildTemplateFS()
+    refreshTemplateFS()
+
+    timer.Create("swadical.mUI.rebuild",0.5,0,refreshTemplateFS)
 
     hook.Add("PlayerInitialSpawn","swadical.mUI.templateSender",function(ply)
         local serialized = bON.serialize(TemplateFS:ToData())
@@ -54,33 +94,16 @@ if SERVER then
         net.Send(ply)
     end)
 else
-    if not OKss then
-        include("includes/modules/mui.lua")
-        OKss = true
-    end
+    include("includes/modules/mui.lua")
+
     net.Receive("swadical.mUI.templateSender",function(len)
         mUI.FS = TFS.FromData(bON.deserialize(util.Decompress(net.ReadData(len))))
         hook.Run("mUI.Ready",mUI)
+    end)
 
-        mUI.activeTemplates = {}
-        local template = mUI:FromTemplate("simplescoreboard.xml")
-        template:SetDraw(true)
-        function template:GetData()
-            local players = {}
-            for i,ply in ipairs(player.GetAll()) do
-                players[i] = {
-                    nick = ply:Nick(),
-                    ping = ply:Ping(),
-                    height = i*20
-                }
-            end
-
-            return {
-                serverName = GetHostName(),
-                players = players,
-                gamemode = engine.ActiveGamemode(),
-                map = game.GetMap()
-            }
-        end
+    net.Receive("swadical.mUI.templateRefresh",function(len)
+        local update = bON.deserialize(util.Decompress(net.ReadData(len)))
+        mUI.FS:Write(update.filePath,update.data)
+        hook.Run("mUI.Update",update.filePath)
     end)
 end

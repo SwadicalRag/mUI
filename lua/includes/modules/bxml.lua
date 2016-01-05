@@ -3,7 +3,7 @@ local bXML = {}
 local TAG_OPEN,TAG_CLOSE,TAG_OPEN_AND_CLOSE,TAG_INFO = 0,1,2,3
 
 -- Internal: do not call
-function bXML:parseTag(str,data,tagStack,start,finish,all)
+function bXML:parseTag(str,data,tagStack,start,finish,all,tagCount)
     local tag,args = str:match("^%s*(%S+)%s*(.*)$")
     local tagFirstChar = tag:sub(1,1)
 
@@ -20,10 +20,14 @@ function bXML:parseTag(str,data,tagStack,start,finish,all)
             error("Tag "..tag.." was closed unexpectedly")
         end
     else
+        tagCount[tag] = tagCount[tag] or 0
+        tagCount[tag] = tagCount[tag] + 1
+
         local tbl = {
             data = {},
             text = "",
-            children = {}
+            children = {},
+            id = ("%08X"):format(util.CRC(tagCount[tag]..tag))
         }
 
         tagStack[#tagStack+1] = {
@@ -62,7 +66,7 @@ function string.ifind(str,match,patterns)
     end
 end
 
-function bXML:parseTagGroup(str,data,tagStack)
+function bXML:parseTagGroup(str,data,tagStack,tagCount)
     for start,finish,tag in str:ifind("<(.-)>") do
         local target
         if tagStack[#tagStack] then
@@ -70,7 +74,7 @@ function bXML:parseTagGroup(str,data,tagStack)
         else
             target = data
         end
-        self:parseTag(tag,target,tagStack,start,finish,str)
+        self:parseTag(tag,target,tagStack,start,finish,str,tagCount)
     end
 
     if #tagStack > 0 then
@@ -86,7 +90,7 @@ function bXML:Parse(str)
         data = {},
         text = "",
         children = {}
-    },{})
+    },{},{})
 end
 
 function bXML:Create(tbl)
