@@ -5,6 +5,7 @@ if SERVER then
     AddCSLuaFile("includes/modules/bon.lua")
     AddCSLuaFile("includes/modules/tfs.lua")
     AddCSLuaFile("includes/modules/lustache.lua")
+    AddCSLuaFile("includes/modules/larith.lua")
     AddCSLuaFile("includes/modules/bxml.lua")
     AddCSLuaFile("includes/modules/mui.lua")
 
@@ -62,11 +63,23 @@ else
         hook.Run("mUI.Ready",mUI)
 
         mUI.activeTemplates = {}
-        local template = mUI:FromTemplate("test.xml")
+        local template = mUI:FromTemplate("simplescoreboard.xml")
         template:SetDraw(true)
         function template:GetData()
+            local players = {}
+            for i,ply in ipairs(player.GetAll()) do
+                players[i] = {
+                    nick = ply:Nick(),
+                    ping = ply:Ping(),
+                    height = i*20
+                }
+            end
+
             return {
-                name = LocalPlayer():Nick()
+                serverName = GetHostName(),
+                players = players,
+                gamemode = engine.ActiveGamemode(),
+                map = game.GetMap()
             }
         end
     end)

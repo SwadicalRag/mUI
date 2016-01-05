@@ -1,0 +1,13 @@
+<Box w="75%" h="75%" x="12.5%" y="12.5%" color="rgba(255,255,255,150)">
+    <Box w="99.9%" h="99.9%" x="0.05%" y="0.05%" color="rgba(255,255,255,150)">
+        <Text font="Roboto" font-weight="500" font-size="30" x="50%" y="5%" color="rgb(10,10,10)" font-horizontal-align="center" font-vertical-align="center">{{serverName}}   |   {{gamemode}}   |   {{map}}</Text>
+        <Box w="95%" h="85%" x="2.5%" y="10%" color="rgba(255,255,255,150)">
+            {{#players}}
+            <Box w="100%" h="30" x="0" y="{{height}}*2" color="rgba(0,0,0,20)">
+                <Text font="Roboto" font-weight="500" font-size="20" x="25" y="13" color="rgb(10,10,10)" font-horizontal-align="left" font-vertical-align="center">{{nick}}</Text>
+                <Text font="Roboto" font-weight="500" font-size="20" x="95%" y="13" color="rgb(10,10,10)" font-horizontal-align="left" font-vertical-align="center">{{ping}}</Text>
+            </Box>
+            {{/players}}
+        </Box>
+    </Box>
+</Box>

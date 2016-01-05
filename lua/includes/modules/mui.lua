@@ -1,5 +1,6 @@
 require("bxml")
 require("lustache")
+include("larith.lua")
 
 mUI = mUI or {}
 
@@ -77,7 +78,6 @@ function mUI.renderContext:pushViewPort(x,y,w,h)
     --render.SetViewPort(x,y,viewPort.w,viewPort.h)
 end
 
-
 function mUI.parsers.color(colorStr)
     if colorStr:find("^rgba%(.-%)$") then
         return Color(colorStr:match("^rgba%(([%d%.]-),([%d%.]-),([%d%.]-),([%d%.]-)%)$"))
@@ -92,20 +92,48 @@ function mUI.parsers.size(data,field,ignore)
     local sizeStr = data[field]
     if not sizeStr then return end
     local fieldWH = (field == "w" or field == "x") and "w" or "h"
-    local size = tonumber(sizeStr)
+    local size
     if sizeStr:find("%%$") then
-        size = tonumber(sizeStr:match("^([%d%.]+)%%$")) / 100 * mUI.renderContext.viewPort[fieldWH]
+        size = larith:Evaluate(sizeStr:match("^([%d%.]+)%%$")) / 100 * mUI.renderContext.viewPort[fieldWH]
+    else
+        size = larith:Evaluate(sizeStr)
     end
 
     if field == fieldWH or ignore then
         return size
     else
+        print(sizeStr)
         return size + mUI.renderContext.viewPort[field]
     end
 end
 
 function mUI.parsers.textAlign(data)
     return _G["TEXT_ALIGN_"..data:upper()] or TEXT_ALIGN_LEFT
+end
+
+local fontCache = {}
+function mUI.parsers.font(data)
+    local fontUID = data["font"]..data["font-size"]..(data["font-weight"] or "500")
+    if not fontCache[fontUID] then
+        surface.CreateFont(fontUID,{
+        	font = data["font"],
+        	size = larith:Evaluate(data["font-size"]),
+        	weight = larith:Evaluate(data["font-weight"] or "500"),
+        	blursize = 0,
+        	scanlines = 0,
+        	antialias = true,
+        	underline = false,
+        	italic = false,
+        	strikeout = false,
+        	symbol = false,
+        	rotary = false,
+        	shadow = false,
+        	additive = false,
+        	outline = false
+        })
+        fontCache[fontUID] = true
+    end
+    return fontUID
 end
 
 function mUI:renderNode(name,data,text)
@@ -143,11 +171,11 @@ function mUI:RegisterRenderer(name,fn)
 end
 
 mUI:RegisterRenderer("Box",function(renderers,data)
-    draw.RoundedBox(tonumber(data.cornerRadius or 0),mUI.parsers.size(data,"x"),mUI.parsers.size(data,"y"),mUI.parsers.size(data,"w"),mUI.parsers.size(data,"h"),mUI.parsers.color(data.color))
+    draw.RoundedBox(larith:Evaluate(data.cornerRadius or 0),mUI.parsers.size(data,"x"),mUI.parsers.size(data,"y"),mUI.parsers.size(data,"w"),mUI.parsers.size(data,"h"),mUI.parsers.color(data.color))
 end)
 
 mUI:RegisterRenderer("Text",function(renderers,data,text)
-    draw.DrawText(text,data.font or "DermaDefault",mUI.parsers.size(data,"x"),mUI.parsers.size(data,"y"),mUI.parsers.color(data.color),mUI.parsers.textAlign(data.align or "left"))
+    draw.SimpleText(text,mUI.parsers.font(data),mUI.parsers.size(data,"x"),mUI.parsers.size(data,"y"),mUI.parsers.color(data.color),mUI.parsers.textAlign(data["font-horizontal-align"] or "left"),mUI.parsers.textAlign(data["font-vertical-align"] or "top"))
 end)
 
 hook.Add("DrawOverlay","swadical.mUI.autoRender",function()

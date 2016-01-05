@@ -26,6 +26,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 -- Copyright 2013 Olivine Labs, LLC <projects@olivinelabs.com>
 -- MIT Licensed.
 
+local string_gmatch = string.gmatch
+function string.split(str, sep)
+  local out = {}
+  for m in string_gmatch(str, "[^"..sep.."]+") do out[#out+1] = m end
+  return out
+end
+
 local lustache_renderer
 do
     local Scanner
@@ -547,12 +554,6 @@ do
 end
 
 local string_gmatch = string.gmatch
-
-function string.split(str, sep)
-  local out = {}
-  for m in string_gmatch(str, "[^"..sep.."]+") do out[#out+1] = m end
-  return out
-end
 
 local lustache = {
   name     = "lustache",
