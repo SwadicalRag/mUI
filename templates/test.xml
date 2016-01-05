@@ -1,3 +1,7 @@
-<Box w="50" h="500" x="100" y="100" color="rgb(255,0,0)">
-
+<Box w="75%" h="75%" x="12.5%" y="12.5%" color="rgba(255,255,0,50)">
+    <Box w="50%" h="50%" x="25%" y="25%" color="rgb(0,255,0)">
+        <Box x="25%" y="25%" w="50%" h="50%" color="rgb(0,255,255)">
+            <Text x="50%" y="50%" color="rgb(0,0,0)" align="center">{{name}}</Text>
+        </Box>
+    </Box>
 </Box>

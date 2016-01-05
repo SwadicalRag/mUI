@@ -53,13 +53,21 @@ if SERVER then
         net.Send(ply)
     end)
 else
-    --include("includes/modules/mui.lua")
-
+    if not OKss then
+        include("includes/modules/mui.lua")
+        OKss = true
+    end
     net.Receive("swadical.mUI.templateSender",function(len)
         mUI.FS = TFS.FromData(bON.deserialize(util.Decompress(net.ReadData(len))))
         hook.Run("mUI.Ready",mUI)
 
+        mUI.activeTemplates = {}
         local template = mUI:FromTemplate("test.xml")
         template:SetDraw(true)
+        function template:GetData()
+            return {
+                name = LocalPlayer():Nick()
+            }
+        end
     end)
 end
