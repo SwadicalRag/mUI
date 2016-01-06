@@ -165,18 +165,52 @@ function mUI:FromTemplate(name)
             end
         end
 
+        function template:traverseNodeText(node,tag,match,txt)
+            if (tag == match) or (self:getNodeUserClass(node) and self:getNodeUserClass(node) == match) or (self:getNodeUserID(node) and self:getNodeUserID(node) == match) then
+                if txt then
+                    node.text = txt
+                else
+                    return node.text
+                end
+            end
+
+            for _,v in ipairs(node.children) do
+                local ret = self:traverseNodeText(v.data,v.tag,match,txt)
+
+                if ret ~= nil then return ret end
+            end
+        end
+
+        function template:GetText(match)
+            self:getDataInternal()
+            for _,v in ipairs(self.XML.children) do
+                self:traverseNodeText(v.data,v.tag,match)
+            end
+        end
+
+        function template:SetText(match,txt)
+            self:getDataInternal()
+            for _,v in ipairs(self.XML.children) do
+                local ret = self:traverseNodeText(v.data,v.tag,match,txt)
+                if ret ~= nil then return ret end
+            end
+        end
+
         function template:GetAttribute(match,key)
             self:getDataInternal()
             for _,v in ipairs(self.XML.children) do
-                self:traverseNodeClasses(v.data,match,key)
+                local ret = self:traverseNodeClasses(v.data,match,key)
+                if ret ~= nil then return ret end
             end
 
             for _,v in ipairs(self.XML.children) do
-                self:traverseNodeClasses(v.data,match,key)
+                local ret = self:traverseNodeClasses(v.data,match,key)
+                if ret ~= nil then return ret end
             end
 
             for _,v in ipairs(self.XML.children) do
-                self:traverseNodeTags(v.data,v.tag,match,key)
+                local ret = self:traverseNodeTags(v.data,v.tag,match,key)
+                if ret ~= nil then return ret end
             end
         end
 
@@ -318,15 +352,15 @@ function mUI.parsers.color(colorStr,node)
             local r,g,b,a = colorStr:match("#(..)(..)(..)(..)")
 
             return Color(tonumber(r,16),tonumber(g,16),tonumber(b,16),tonumber(a,16))
-        elseif #colorStr == 6 then
+        elseif #colorStr == 7 then
             local r,g,b = colorStr:match("#(..)(..)(..)")
 
             return Color(tonumber(r,16),tonumber(g,16),tonumber(b,16))
-        elseif #colorStr == 4 then
+        elseif #colorStr == 5 then
             local r,g,b,a = colorStr:match("#(.)(.)(.)(.)")
 
             return Color(tonumber(r,16),tonumber(g,16),tonumber(b,16),tonumber(a,16))
-        elseif #colorStr == 3 then
+        elseif #colorStr == 4 then
             local r,g,b = colorStr:match("#(.)(.)(.)")
 
             return Color(tonumber(r,16),tonumber(g,16),tonumber(b,16))
@@ -357,21 +391,21 @@ function mUI.parsers.size(data,field,ignore)
 
     if (field ~= fieldWH) and (fieldWH == "w") then
         if data.left and data.right then
-            size = mUI.renderContext.viewPort.w * 0.5 - mUI.parsers.unit(data.left,"w") + mUI.parsers.unit(data.right,"w")
+            size = mUI.renderContext.viewPort.w * 0.5 - mUI.parsers.unit(data.left,"w") + mUI.parsers.unit(data.right,"w") - mUI.parsers.size(data,"w")/2
         elseif data.left then
             size = mUI.parsers.unit(data.left,"w")
         elseif data.right then
-            size = mUI.parsers.unit(data.right,"w")
+            size = mUI.renderContext.viewPort.w - mUI.parsers.unit(data.right,"w") - mUI.parsers.size(data,"w")
         else
             error("One of 'left' or 'right' must be in a node ("..(data.id or data.class or "???")..")")
         end
     elseif(field ~= fieldWH) then
         if data.top and data.bottom then
-            size = mUI.renderContext.viewPort.h * 0.5 - mUI.parsers.unit(data.top,"h") + mUI.parsers.unit(data.bottom,"h")
+            size = mUI.renderContext.viewPort.h * 0.5 - mUI.parsers.unit(data.top,"h") + mUI.parsers.unit(data.bottom,"h") - mUI.parsers.size(data,"h")/2
         elseif data.top then
             size = mUI.parsers.unit(data.top,"h")
         elseif data.bottom then
-            size = mUI.parsers.unit(data.bottom,"h")
+            size = mUI.renderContext.viewPort.h - mUI.parsers.unit(data.bottom,"h") - mUI.parsers.size(data,"h")
         else
             error("One of 'top' or 'bottom' must be in a node ("..(data.id or data.class or "???")..")")
         end
@@ -503,7 +537,34 @@ function mUI:doMouseChecks(node,template)
     end
 end
 
+local blurMat = Material("pp/blurscreen")
+local function blur(x,y,factor)
+    surface.SetMaterial(blurMat)
+    surface.SetDrawColor(0,0,0,150)
+
+    for i=1,factor do
+        blurMat:SetFloat("$blur",i/3*factor)
+        blurMat:Recompute()
+        render.UpdateScreenEffectTexture()
+        surface.DrawTexturedRect(-x-10,-y-10,mUI.renderContext.original.w+20,mUI.renderContext.original.h+20)
+    end
+end
+
 function mUI:parseRenderNode(name,tbl,template)
+    if tbl.data.BLUR then
+        self.renderContext:pushViewPort(
+            self.parsers.size(tbl.data,"x"),
+            self.parsers.size(tbl.data,"y"),
+            self.parsers.size(tbl.data,"w"),
+            self.parsers.size(tbl.data,"h")
+        )
+        blur(
+            self.parsers.size(tbl.data,"x"),
+            self.parsers.size(tbl.data,"y"),
+            larith:Evaluate((tbl.data.BLUR ~= "") and tbl.data.BLUR or 6)
+        )
+        self.renderContext:popViewPort()
+    end
     self:renderNode(template,name,tbl)
 
     local totalW,totalH = 0,0
@@ -517,7 +578,7 @@ function mUI:parseRenderNode(name,tbl,template)
         )
 
         if tbl.data.RELATIVE_X then
-            totalW = totalW + self.parsers.size(data.data.data,"w") + self.parsers.size(data.data.data,"x")
+            totalW = totalW + self.parsers.size(data.data.data,"w") + self.parsers.size(data.data.data,"x",true)
         end
 
         if tbl.data.RELATIVE_Y then

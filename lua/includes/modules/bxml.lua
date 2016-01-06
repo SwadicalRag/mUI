@@ -47,7 +47,7 @@ function bXML:parseTag(str,data,tagStack,start,finish,all,tagCount)
             data = tbl
         }
 
-        if tag:match("/%s*$") then
+        if args:match("/%s*$") then
             tagStack[#tagStack] = nil
 
             return TAG_OPEN_AND_CLOSE

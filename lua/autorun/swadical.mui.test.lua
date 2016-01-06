@@ -1,3 +1,5 @@
+if true then return end
+
 local function update()
     mUI.activeTemplates = {}
     local template = mUI:FromTemplate("simplescoreboard.xml")
