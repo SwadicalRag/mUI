@@ -27,7 +27,8 @@ function bXML:parseTag(str,data,tagStack,start,finish,all,tagCount)
             data = {},
             text = "",
             children = {},
-            id = ("%08X"):format(util.CRC(tagCount[tag]..tag))
+            id = ("%08X"):format(util.CRC(tagCount[tag]..tag)),
+            tag = tag
         }
 
         tagStack[#tagStack+1] = {
@@ -56,7 +57,7 @@ function bXML:parseTag(str,data,tagStack,start,finish,all,tagCount)
     end
 end
 
-function string.ifind(str,match,patterns)
+local function ifind(str,match,patterns)
     local lastpos = 1
     return function()
         local args = {str:find(match,lastpos,patterns)}
@@ -67,7 +68,7 @@ function string.ifind(str,match,patterns)
 end
 
 function bXML:parseTagGroup(str,data,tagStack,tagCount)
-    for start,finish,tag in str:ifind("<(.-)>") do
+    for start,finish,tag in ifind(str,"<(.-)>") do
         local target
         if tagStack[#tagStack] then
             target = tagStack[#tagStack].data

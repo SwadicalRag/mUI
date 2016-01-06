@@ -8,7 +8,8 @@ local function update()
             players[i] = {
                 nick = ply:Nick(),
                 ping = ply:Ping(),
-                height = i*20
+                height = i*20,
+                SteamID = ply:SteamID()
             }
         end
 
@@ -20,9 +21,9 @@ local function update()
         }
     end
 
-    template:Listen("#main1","onMouseOver",function()print("MOUSE IN")end)
-    template:Listen("#main1","onMouseOverEnd",function()print("MOUSE OUT")end)
-    template:Listen("#main1","onClick",function(n)print("MOUSE CLICK",n)end)
+    template:Listen("ProfilePicture","onClick",function(node)
+        gui.OpenURL("http://steamcommunity.com/profiles/"..util.SteamIDTo64(node:GetAttribute("steamID")))
+    end)
 
     local shouldDraw = false
     hook.Add("ScoreboardShow","mUI.simplescoreboard",function()
