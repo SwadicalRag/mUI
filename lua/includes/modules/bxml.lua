@@ -6,21 +6,31 @@ bXML.metas = {}
 
 bXML.metas.node = {
     __tostring = function(self)
-        return "bXML Node ["..self.id.."]"
+        return "bXML Node ["..self.id.." @ line "..self.line.."]"
     end
 }
 
 bXML.metas.attributes = {
     __tostring = function(self)
-        return "bXML Node Attributes ["..self._id.."]"
+        return "bXML Node Attributes ["..self._parent.id.." @ line "..self._parent.line.."]"
     end
 }
 
 bXML.metas.children = {
     __tostring = function(self)
-        return "bXML Node Children ["..self.parent.id.."]"
+        return "bXML Node Children ["..self.parent.id.." @ line "..self.parent.line.."]"
     end
 }
+
+local function countNewlines(str,pos)
+    local count = 1
+
+    for _ in str:sub(1,pos):gmatch("\r?\n") do
+        count = count + 1
+    end
+
+    return count
+end
 
 -- Internal: do not call
 function bXML:parseTag(str,node,tagStack,tagStart,tagFinish,stringXML,tagCountLookup)
@@ -45,12 +55,14 @@ function bXML:parseTag(str,node,tagStack,tagStart,tagFinish,stringXML,tagCountLo
 
         local newNode = setmetatable({
             text = "",
-            id = tagCountLookup[tag]..tag,
-            tag = tag
+            id = tag.."#"..tagCountLookup[tag],
+            tag = tag,
+            line = countNewlines(stringXML,tagStart),
+            parent = node
         },self.metas.node)
 
         newNode.attributes = setmetatable({},self.metas.attributes)
-        newNode.attributes._id = newNode.id
+        newNode.attributes._parent = node
 
         newNode.children = setmetatable({},self.metas.children)
         newNode.children.parent = node

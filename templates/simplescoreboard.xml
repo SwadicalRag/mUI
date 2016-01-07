@@ -1,14 +1,14 @@
 <!TRAP_MOUSE>
 <Box id="test" w="75%" h="75%" top="12.5%" left="12.5%" color="rgba(255,255,255,150)">
     <Box id="main1" w="99.9%" h="99.9%" left="0.05%" top="0.05%" color="rgba(255,255,255,150)">
-        <Text id="title" font="Roboto" font-weight="500" font-size="30" left="50%" top="5%" color="rgb(10,10,10)" font-horizontal-align="center" font-vertical-align="center">{{serverName}}   |   {{gamemode}}   |   {{map}}</Text>
+        <Text id="title" font="Roboto" font-weight="500px" font-size="30px" left="50%" top="5%" color="rgb(10,10,10)" font-horizontal-align="center" font-vertical-align="center">{{serverName}}   |   {{gamemode}}   |   {{map}}</Text>
         <Box id="playerlist" w="95%" h="85%" left="2.5%" top="10%" color="rgba(255,255,255,150)">
             <!RELATIVE_Y>
             <Box w="100%" h="15px" left="0px" top="0px" color="rgba(0,0,0,0)"></Box>
             {{#players}}
             <Box class="playerbox" steamid="{{SteamID}}" w="100%" h="30px" left="0px" top="15px" color="rgba(0,0,0,20)">
-                <Text font="Roboto" font-weight="500" font-size="20" left="36px" top="13px" color="rgb(10,10,10)" font-horizontal-align="left" font-vertical-align="center">{{nick}}</Text>
-                <Text font="Roboto" font-weight="500" font-size="20" left="95%" top="13px" color="rgb(10,10,10)" font-horizontal-align="left" font-vertical-align="center">{{ping}}</Text>
+                <Text font="Roboto" font-weight="500px" font-size="20px" left="36px" top="13px" color="rgb(10,10,10)" font-horizontal-align="left" font-vertical-align="center">{{nick}}</Text>
+                <Text font="Roboto" font-weight="500px" font-size="20px" left="95%" top="13px" color="rgb(10,10,10)" font-horizontal-align="left" font-vertical-align="center">{{ping}}</Text>
                 <ProfilePicture id="meme" steamID="{{SteamID}}" left="6px" top="2px" w="26px" h="26px">
                     <!CURSOR hand>
                 </ProfilePicture>

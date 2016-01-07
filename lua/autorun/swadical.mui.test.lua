@@ -3,7 +3,7 @@ if true then return end
 local function update()
     mUI.activeTemplates = {}
     local template = mUI:FromTemplate("simplescoreboard.xml")
-
+    print("AABB")
     function template:GetData()
         local players = {}
         for i,ply in ipairs(player.GetAll()) do
@@ -35,6 +35,7 @@ local function update()
 
     hook.Add("ScoreboardHide","mUI.simplescoreboard",function()
         shouldDraw = false
+        template:Hide()
         return true
     end)
 

@@ -64,6 +64,7 @@ function mUI:FromTemplate(name)
     local results = self.FS:SearchFile(name,true,false)
     if #results > 0 then
         local template = {}
+        template.lastDrewAt = 0
         template.data = {}
         template.id = ("%x"):format(math.random(1,10^6))
         template.contents = self.FS:Read(results[1])
@@ -81,7 +82,7 @@ function mUI:FromTemplate(name)
         end
 
         template.lastDataTime = 0
-        template.templateUpdateInterval = 60
+        template.templateUpdateInterval = 1/24
         function template:getDataInternal()
             if (SysTime() - self.lastDataTime) > self.templateUpdateInterval then
                 self:buildTemplate()
@@ -100,6 +101,18 @@ function mUI:FromTemplate(name)
 
         function template:SetDraw(val)
             self.draw = val
+            if (not val) and self.idle then
+                self:idle()
+                self.idle = nil
+            end
+        end
+
+        function template:Show()
+            self:SetDraw(true)
+        end
+
+        function template:Hide()
+            self:SetDraw(false)
         end
 
         template.attributes = {}
@@ -234,6 +247,8 @@ function mUI:FromTemplate(name)
                 self.panels[node.id] = vgui.Create(class,mUI.PlaceholderPanel)
                 self.panels[node.id].node = node
                 self.panels[node.id].template = template
+                self.panels[node.id]:SetPaintedManually(true)
+                --[[
                 self.panels[node.id]:SetMouseInputEnabled(true)
                 self.panels[node.id]:SetKeyboardInputEnabled(true)
                 local oPaint = self.panels[node.id].Paint
@@ -259,6 +274,14 @@ function mUI:FromTemplate(name)
                 end
                 self.panels[node.id].OnMouseReleased = function(...)
                     self:runNodeEvent(node,"onClickEnd",...)
+                end]]
+
+                self.panels[node.id].Render = function(self)
+                    self:SetPaintedManually(false)
+                    local x,y = self:GetPos()
+                    local w,h = self:GetSize()
+                    self:PaintAt(x,y,w,h)
+                    self:SetPaintedManually(true)
                 end
             end
 
@@ -285,6 +308,11 @@ mUI.renderContext.original = mUI.renderContext.original or {
 mUI.renderContext.contextStack = mUI.renderContext.contextStack or {mUI.renderContext.original}
 mUI.renderContext.viewPort = mUI.renderContext.viewPort or mUI.renderContext.original
 
+function mUI:ResolutionChange(w,h)
+    mUI.renderContext.original.w = w
+    mUI.renderContext.original.h = h
+end
+
 function mUI.renderContext:popViewPort()
     self.contextStack[#self.contextStack] = nil
     local viewPort = self.contextStack[#self.contextStack] or self.original
@@ -306,10 +334,11 @@ function mUI.renderContext:pushViewPort(x,y,w,h)
 end
 
 function mUI.parsers.color(colorStr,node)
+    if not colorStr then error("Node has no color attribute!") end
     if colorStr:find("^rgba%(.-%)$") then
-        return Color(colorStr:match("^rgba%(([%d%.]-),([%d%.]-),([%d%.]-),([%d%.]-)%)$"))
+        return Color(colorStr:match("^rgba%((%s*[%d%.]-%s*),(%s*[%d%.]-%s*),(%s*[%d%.]-%s*),(%s*[%d%.]-%s*)%)$"))
     elseif colorStr:find("^rgb(.-)$") then
-        return Color(colorStr:match("^rgb%(([%d%.]-),([%d%.]-),([%d%.]-)%)$"))
+        return Color(colorStr:match("^rgb%((%s*[%d%.]-%s*),(%s*[%d%.]-%s*),(%s*[%d%.]-%s*)%)$"))
     elseif colorStr:sub(1,1) == "#" then
         if #colorStr == 9 then
             local r,g,b,a = colorStr:match("#(..)(..)(..)(..)")
@@ -337,14 +366,23 @@ end
 
 function mUI.parsers.unit(str,WH)
     if str:sub(-1,-1) == "%" then
-        return larith:Evaluate(str:sub(1,-2)) / 100 * mUI.renderContext.viewPort[WH]
+        if WH then
+            return larith:Evaluate(str:sub(1,-2)) / 100 * mUI.renderContext.viewPort[WH]
+        else
+            local frac = larith:Evaluate(str:sub(1,-2)) / 100
+            return (((mUI.renderContext.original.w)^2 + mUI.renderContext.original.h^2)^0.5) * frac
+        end
     else
         local unit,num = str:sub(-2,-1),larith:Evaluate(str:sub(1,-3))
         if unit == "px" then
             return num
         else
             --TODO: Fancy units
-            return num
+            if tonumber(unit) or num == "" then
+                error("Units are required for size attributes!")
+            else
+                error("Bad unit "..unit)
+            end
         end
     end
 end
@@ -372,8 +410,10 @@ function mUI.parsers.size(attributes,field,isRelativeToViewPort)
         else
             error("One of 'top' or 'bottom' must be in a node ("..(attributes.id or attributes.class or "???")..")")
         end
-    else
+    elseif attributes[field] then
         size = mUI.parsers.unit(attributes[field],fieldWH)
+    else
+        error("Expected a "..field.." attribute but saw none!")
     end
 
 
@@ -390,12 +430,14 @@ end
 
 local fontCache = {}
 function mUI.parsers.font(data)
-    local fontUID = data["font"]..(larith:Evaluate(data["font-size"]))..(data["font-weight"] or "500")
+    if not data["font"] then error("Expected a font attribute but found none!") end
+    if not data["font-size"] then error("Expected a font-size attribute but found none!") end
+    local fontUID = data["font"]..(mUI.parsers.unit(data["font-size"]))..(data["font-weight"] or "500")
     if not fontCache[fontUID] then
         surface.CreateFont(fontUID,{
         	font = data["font"],
-        	size = (larith:Evaluate(data["font-size"])),
-        	weight = larith:Evaluate(data["font-weight"] or "500"),
+        	size = (mUI.parsers.unit(data["font-size"])),
+        	weight = mUI.parsers.unit(data["font-weight"] or "500px"),
         	blursize = 0,
         	scanlines = 0,
         	antialias = true,
@@ -413,7 +455,9 @@ function mUI.parsers.font(data)
     return fontUID
 end
 
-function mUI:isMouseInViewPort(viewPort,mouseX,mouseY)
+function mUI:isMouseInViewPort(viewPort)
+    local mouseX,mouseY = gui.MousePos()
+
     local x1 = (viewPort.x <= mouseX)
     local x2 = ((viewPort.x + viewPort.w) >= mouseX)
     local y1 = (viewPort.y <= mouseY)
@@ -422,31 +466,55 @@ function mUI:isMouseInViewPort(viewPort,mouseX,mouseY)
 end
 
 function mUI:isMouseInChildrenViewPort(node)
-    local mouseX,mouseY = gui.MousePos()
+    mUI.lastRenderedNode = node
 
     local inViewPort = false
     for _,child in ipairs(node.children) do
-        if child.attributes.x and child.attributes.y and child.attributes.w and child.attributes.h then
-            self.renderContext:pushViewPort(
-                self.parsers.size(child.attributes,"x"),
-                self.parsers.size(child.attributes,"y"),
-                self.parsers.size(child.attributes,"w"),
-                self.parsers.size(child.attributes,"h")
-            )
-            inViewPort = inViewPort or (self:isMouseInViewPort(self.renderContext.viewPort,mouseX,mouseY) and not child.attributes.UNCLICKABLE)
-            inViewPort = inViewPort or self:isMouseInChildrenViewPort(child)
-            self.renderContext:popViewPort()
+        mUI.lastRenderedNode = child
+        if (child.attributes.left or child.attributes.right) and (child.attributes.top or child.attributes.bottom) and child.attributes.w and child.attributes.h then
+            inViewPort = inViewPort or (
+                (#child.children == 0)
+                and self:isMouseInSolitaryNode(child)
+            ) and not child.attributes.UNCLICKABLE
+
+            if #child.children > 0 then
+                inViewPort = inViewPort or self:isMouseInChildrenViewPort(child)
+            end
+
             if inViewPort then return true end
         end
     end
     return false
 end
 
+function mUI:isMouseInSolitaryNode(node)
+    local mouseX,mouseY = gui.MousePos()
+
+    return (node.attributes.left or node.attributes.right)
+    and (node.attributes.top or node.attributes.bottom)
+    and node.attributes.w
+    and node.attributes.h
+    and self:isMouseInViewPort({
+        x = self.parsers.size(node.attributes,"x"),
+        y = self.parsers.size(node.attributes,"y"),
+        w = self.parsers.size(node.attributes,"w"),
+        h = self.parsers.size(node.attributes,"h")
+    },mouseX,mouseY)
+end
+
 mUI.mouseIsOver = false
 function mUI:doMouseChecks(template,node)
     local mouseX,mouseY = gui.MousePos()
 
-    if not node.autoMouseEvents and self:isMouseInViewPort(self.renderContext.viewPort,mouseX,mouseY) and not self:isMouseInChildrenViewPort(node) and not node.attributes.UNCLICKABLE then
+    if ((
+        (#node.children > 0)
+        and self:isMouseInViewPort(self.renderContext.viewPort)
+        and not self:isMouseInChildrenViewPort(node)
+    )
+    or (
+        (#node.children == 0)
+        and self:isMouseInSolitaryNode(node)
+    )) and not node.attributes.UNCLICKABLE then
         self.mouseIsOver = node.id
         if node.attributes.CURSOR then
             self:SetCursor(node.attributes.CURSOR)
@@ -484,10 +552,6 @@ function mUI:doMouseChecks(template,node)
             template:setNodeAttribute(node,"onCursorEntered",false)
         end
     end
-
-    if not self.mouseIsOver then
-        self:SetCursor("user")
-    end
 end
 
 local blurMat = Material("pp/blurscreen")
@@ -505,13 +569,42 @@ end
 
 function mUI:renderNode(template,node)
     if self.renderers[node.tag] then
-        self.renderers[node.tag](template,node)
+        xpcall(self.renderers[node.tag],function(err)
+            ErrorNoHalt("An unexpected error occurred while rendering node "..tostring(node).."!\n"..err.."\n"..debug.traceback("mUI runtime traceback",2))
+            Msg("\n\n")
+        end,template,node)
     else
         error("Unknown render node "..node)
     end
 end
 
 function mUI:parseRenderNode(template,node)
+    mUI.lastRenderedNode = node
+
+    if (self.renderContext.original.w < 640) then
+        if node.attributes.UI_TINY then
+            return
+        end
+    elseif node.attributes.UI_NOT_TINY then
+        return
+    end
+
+    if (self.renderContext.original.w < 1920) then
+        if node.attributes.UI_HUGE then
+            return
+        end
+    elseif node.attributes.UI_NOT_HUGE then
+        return
+    end
+
+    if (self.renderContext.original.w < 1024) then
+        if node.attributes.UI_LARGE then
+            return
+        end
+    elseif node.attributes.UI_NOT_LARGE then
+        return
+    end
+
     if node.attributes.BLUR then
         self.renderContext:pushViewPort(
             self.parsers.size(node.attributes,"x"),
@@ -538,6 +631,7 @@ function mUI:parseRenderNode(template,node)
             self.parsers.size(node.attributes,"h")
         )
 
+        mUI.lastRenderedNode = child
         if node.attributes.RELATIVE_X then
             totalW = totalW + self.parsers.size(child.attributes,"w") + self.parsers.size(child.attributes,"x",true)
         end
@@ -550,6 +644,10 @@ function mUI:parseRenderNode(template,node)
 
         self:parseRenderNode(template,child)
         self.renderContext:popViewPort()
+    end
+
+    if #node.children == 0 then
+        self:doMouseChecks(template,node)
     end
 end
 
@@ -566,40 +664,38 @@ end)
 function mUI:Render(template)
     template:getDataInternal()
 
-    for _,p in pairs(template.panels) do
-        if IsValid(p) then
-            p:SetAlpha(p.OldAlpha or 255)
-            p:Show()
-        end
-    end
-
     self:trapCursorOrKeyboard(template.XML.attributes.TRAP_MOUSE and true,template.XML.attributes.TRAP_KEYBOARD and true)
-
-    for _,child in ipairs(template.XML.children) do
-        self:parseRenderNode(template,child)
-    end
 
     template.lastDrewAt = mUI.frameID
     function template:idle()
-        if template.XML.children.TRAP_MOUSE then
-            mUI:trapCursorOrKeyboard(false,false)
-        end
+        mUI:trapCursorOrKeyboard(false,false)
 
-        for _,p in pairs(template.panels) do
-            if IsValid(p) then
-                p.OldAlpha = p:GetAlpha()
-                p:SetAlpha(0)
-                p:Hide()
+        mUI:SetCursor("user")
+    end
+
+    for _,child in ipairs(template.XML.children) do
+        local success,err = xpcall(function()
+            self:parseRenderNode(template,child)
+        end,function(err)
+            for i=1,#mUI.renderContext.contextStack - 1 do
+                mUI.renderContext:popViewPort()
             end
-        end
+            self:trapCursorOrKeyboard(false,false)
 
-        self.idle = nil
+            ErrorNoHalt("Fatal mUI render error: "..err..".\nLast rendered node: "..tostring(mUI.lastRenderedNode or "none").."\n")
+            Msg(debug.traceback("mUI runtime traceback",2))
+            MsgN("\n\n")
+        end)
+
+        if not success then return end
     end
 end
 
 function mUI:RegisterRenderer(name,fn)
     self.renderers[name] = fn
 end
+
+mUI:RegisterRenderer("Block",function()end)
 
 mUI:RegisterRenderer("Box",function(template,node)
     draw.RoundedBox(larith:Evaluate(node.attributes.cornerRadius or 0),mUI.parsers.size(node.attributes,"x",true),mUI.parsers.size(node.attributes,"y",true),mUI.parsers.size(node.attributes,"w",true),mUI.parsers.size(node.attributes,"h",true),mUI.parsers.color(node.attributes.color))
@@ -611,18 +707,10 @@ end)
 
 mUI:RegisterRenderer("ProfilePicture",function(template,node)
     template:bindPanel(node,"AvatarImage"):SetSteamID(node.attributes.steamID64 or util.SteamIDTo64(node.attributes.steamID),larith:Evaluate(node.attributes.avatarSize or 128))
-    template:bindPanel(node,"AvatarImage"):SetPos(mUI.parsers.size(node.attributes,"x",false),mUI.parsers.size(node.attributes,"y",false))
-    template:bindPanel(node,"AvatarImage"):SetSize(mUI.parsers.size(node.attributes,"w",false),mUI.parsers.size(node.attributes,"h",false))
-end)
+    template:bindPanel(node,"AvatarImage"):SetPos(mUI.parsers.size(node.attributes,"x",true),mUI.parsers.size(node.attributes,"y",true))
+    template:bindPanel(node,"AvatarImage"):SetSize(mUI.parsers.size(node.attributes,"w",true),mUI.parsers.size(node.attributes,"h",true))
 
-mUI.frameID = 0
-hook.Add("DrawOverlay","swadical.mUI.dermaOverride",function()
-    for _,template in ipairs(mUI.activeTemplates) do
-        if template.idle and (template.lastDrewAt ~= mUI.frameID) then
-            template:idle()
-        end
-    end
-    mUI.frameID = mUI.frameID + 1
+    template:bindPanel(node,"AvatarImage"):Render()
 end)
 
 hook.Add("DrawOverlay","swadical.mUI.autoRender",function()
@@ -633,6 +721,13 @@ hook.Add("DrawOverlay","swadical.mUI.autoRender",function()
         mUI.keyboardTrapped = false
         mUI.cursorTrapped = false
         mUI.PlaceholderPanel.Paint = function()end
+
+        vgui.CreateFromTable{
+        	Base = "Panel",
+        	PerformLayout = function()
+        		mUI:ResolutionChange(ScrW(),ScrH())
+        	end
+        }:ParentToHUD()
     end
 
     for _,template in ipairs(mUI.activeTemplates) do
