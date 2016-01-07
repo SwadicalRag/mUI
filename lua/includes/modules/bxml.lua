@@ -2,17 +2,37 @@ local bXML = {}
 
 local TAG_OPEN,TAG_CLOSE,TAG_OPEN_AND_CLOSE,TAG_INFO = 0,1,2,3
 
+bXML.metas = {}
+
+bXML.metas.node = {
+    __tostring = function(self)
+        return "bXML Node ["..self.id.."]"
+    end
+}
+
+bXML.metas.attributes = {
+    __tostring = function(self)
+        return "bXML Node Attributes ["..self._id.."]"
+    end
+}
+
+bXML.metas.children = {
+    __tostring = function(self)
+        return "bXML Node Children ["..self.parent.id.."]"
+    end
+}
+
 -- Internal: do not call
-function bXML:parseTag(str,data,tagStack,start,finish,all,tagCount)
+function bXML:parseTag(str,node,tagStack,tagStart,tagFinish,stringXML,tagCountLookup)
     local tag,args = str:match("^%s*(%S+)%s*(.*)$")
     local tagFirstChar = tag:sub(1,1)
 
     if tagFirstChar == "!" then
-        data.data[tag:sub(2,-1)] = args
+        node.attributes[tag:sub(2,-1)] = args
         return TAG_INFO
     elseif tagFirstChar == "/" then
         if tagStack[#tagStack].tag == tag:sub(2,-1) then
-            tagStack[#tagStack].data.text = all:sub(tagStack[#tagStack].finish+1,start-1) or ""
+            tagStack[#tagStack].node.text = stringXML:sub(tagStack[#tagStack].tagFinish+1,tagStart-1) or ""
             tagStack[#tagStack] = nil
 
             return TAG_CLOSE
@@ -20,32 +40,33 @@ function bXML:parseTag(str,data,tagStack,start,finish,all,tagCount)
             error("Tag "..tag.." was closed unexpectedly")
         end
     else
-        tagCount[tag] = tagCount[tag] or 0
-        tagCount[tag] = tagCount[tag] + 1
+        tagCountLookup[tag] = tagCountLookup[tag] or 0
+        tagCountLookup[tag] = tagCountLookup[tag] + 1
 
-        local tbl = {
-            data = {},
+        local newNode = setmetatable({
             text = "",
-            children = {},
-            id = ("%08X"):format(util.CRC(tagCount[tag]..tag)),
+            id = tagCountLookup[tag]..tag,
             tag = tag
-        }
+        },self.metas.node)
+
+        newNode.attributes = setmetatable({},self.metas.attributes)
+        newNode.attributes._id = newNode.id
+
+        newNode.children = setmetatable({},self.metas.children)
+        newNode.children.parent = node
 
         tagStack[#tagStack+1] = {
             tag = tag,
-            data = tbl,
-            finish = finish,
-            start = start
+            node = newNode,
+            tagFinish = tagFinish,
+            tagStart = tagStart
         }
 
         for key,val in args:gmatch("(%S+)%s*=%s*(%b\"\")") do
-            tbl.data[key] = val:sub(2,-2)
+            newNode.attributes[key] = val:sub(2,-2)
         end
 
-        data.children[#data.children+1] = {
-            tag = tag,
-            data = tbl
-        }
+        node.children[#node.children+1] = newNode
 
         if args:match("/%s*$") then
             tagStack[#tagStack] = nil
@@ -67,15 +88,11 @@ local function ifind(str,match,patterns)
     end
 end
 
-function bXML:parseTagGroup(str,data,tagStack,tagCount)
-    for start,finish,tag in ifind(str,"<(.-)>") do
-        local target
-        if tagStack[#tagStack] then
-            target = tagStack[#tagStack].data
-        else
-            target = data
-        end
-        self:parseTag(tag,target,tagStack,start,finish,str,tagCount)
+function bXML:parseTagGroup(str,data,tagStack,tagCountLookup)
+    for tagStart,tagFinish,tag in ifind(str,"<(.-)>") do
+        local target = tagStack[#tagStack] and tagStack[#tagStack].node or data
+
+        self:parseTag(tag,target,tagStack,tagStart,tagFinish,str,tagCountLookup)
     end
 
     if #tagStack > 0 then
@@ -87,15 +104,13 @@ function bXML:parseTagGroup(str,data,tagStack,tagCount)
 end
 
 function bXML:Parse(str)
-    return self:parseTagGroup(str,{
-        data = {},
-        text = "",
-        children = {}
-    },{},{})
-end
-
-function bXML:Create(tbl)
-    error("Unimplemented")
+    return self:parseTagGroup(str,setmetatable({
+        attributes = setmetatable({},self.metas.attributes),
+        text = str,
+        children = setmetatable({},self.metas.children),
+        id = "main",
+        tag = "__main__" -- internal use only
+    },self.metas.node),{},{})
 end
 
 _G.bXML = bXML

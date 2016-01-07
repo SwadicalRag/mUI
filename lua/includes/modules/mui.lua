@@ -113,60 +113,24 @@ function mUI:FromTemplate(name)
             return self.attributes[node.id][key]
         end
 
+        function template:getNodeUserClass(node)
+            if node.attributes.class then return "."..node.attributes.class else return false end
+        end
+
+        function template:isNodeUserClass(node,match)
+            return self:getNodeUserClass(node) and (self:getNodeUserClass(node) == match)
+        end
+
         function template:getNodeUserID(node)
-            if node.data.id then return "#"..node.data.id else return false end
+            if node.attributes.id then return "#"..node.attributes.id else return false end
         end
 
-        function template:traverseNodeIDs(node,match,k,v)
-            if self:getNodeUserID(node) and self:getNodeUserID(node) == match then
-                if v ~= nil then
-                    node.data[k] = v
-                else
-                    return node.data[k]
-                end
-            end
-
-            for _,v in ipairs(node.children) do
-                local ret = self:traverseNodeIDs(v.data,match,k,v)
-
-                if ret ~= nil then return ret end
-            end
+        function template:isNodeUserID(node,match)
+            return self:getNodeUserID(node) and (self:getNodeUserID(node) == match)
         end
 
-        function template:traverseNodeClasses(node,match,k,v)
-            if self:getNodeUserClass(node) and self:getNodeUserClass(node) == match then
-                if v ~= nil then
-                    node.data[k] = v
-                else
-                    return node.data[k]
-                end
-            end
-
-            for _,v in ipairs(node.children) do
-                local ret = self:traverseNodeClasses(v.data,match,k,v)
-
-                if ret ~= nil then return ret end
-            end
-        end
-
-        function template:traverseNodeTags(node,tag,match,k,v)
-            if tag == match then
-                if v ~= nil then
-                    node.data[k] = v
-                else
-                    return node.data[k]
-                end
-            end
-
-            for _,v in ipairs(node.children) do
-                local ret = self:traverseNodeTags(v.data,v.tag,match,k,v)
-
-                if ret ~= nil then return ret end
-            end
-        end
-
-        function template:traverseNodeText(node,tag,match,txt)
-            if (tag == match) or (self:getNodeUserClass(node) and self:getNodeUserClass(node) == match) or (self:getNodeUserID(node) and self:getNodeUserID(node) == match) then
+        function template:traverseNodeText(node,match,txt)
+            if (node.tag == match) or self:isNodeUserClass(node,match) or self:isNodeUserID(node,match) then
                 if txt then
                     node.text = txt
                 else
@@ -174,8 +138,24 @@ function mUI:FromTemplate(name)
                 end
             end
 
-            for _,v in ipairs(node.children) do
-                local ret = self:traverseNodeText(v.data,v.tag,match,txt)
+            for _,child in ipairs(node.children) do
+                local ret = self:traverseNodeText(child,match,txt)
+
+                if ret ~= nil then return ret end
+            end
+        end
+
+        function template:traverseNodeAttributes(node,match,k,v)
+            if (node.tag == match) or self:isNodeUserClass(node,match) or self:isNodeUserID(node,match) then
+                if v ~= nil then
+                    node.attributes[k] = v
+                else
+                    return node.attributes[k]
+                end
+            end
+
+            for _,child in ipairs(node.children) do
+                local ret = self:traverseNodeAttributes(child,match,k,v)
 
                 if ret ~= nil then return ret end
             end
@@ -183,62 +163,45 @@ function mUI:FromTemplate(name)
 
         function template:GetText(match)
             self:getDataInternal()
-            for _,v in ipairs(self.XML.children) do
-                self:traverseNodeText(v.data,v.tag,match)
+            for _,child in ipairs(self.XML.children) do
+                local ret = self:traverseNodeText(child,match)
+                if ret ~= nil then return ret end
             end
         end
 
         function template:SetText(match,txt)
             self:getDataInternal()
-            for _,v in ipairs(self.XML.children) do
-                local ret = self:traverseNodeText(v.data,v.tag,match,txt)
-                if ret ~= nil then return ret end
+            for _,child in ipairs(self.XML.children) do
+                self:traverseNodeText(child,match,txt)
             end
         end
 
         function template:GetAttribute(match,key)
             self:getDataInternal()
-            for _,v in ipairs(self.XML.children) do
-                local ret = self:traverseNodeClasses(v.data,match,key)
-                if ret ~= nil then return ret end
-            end
-
-            for _,v in ipairs(self.XML.children) do
-                local ret = self:traverseNodeClasses(v.data,match,key)
-                if ret ~= nil then return ret end
-            end
-
-            for _,v in ipairs(self.XML.children) do
-                local ret = self:traverseNodeTags(v.data,v.tag,match,key)
+            for _,child in ipairs(self.XML.children) do
+                local ret = self:traverseNodeAttributes(child,match,key)
                 if ret ~= nil then return ret end
             end
         end
 
         function template:SetAttribute(match,key,val)
             self:getDataInternal()
-            for _,v in ipairs(self.XML.children) do
-                self:traverseNodeClasses(v.data,match,key,val)
-            end
-
-            for _,v in ipairs(self.XML.children) do
-                self:traverseNodeClasses(v.data,match,key,val)
+            for _,child in ipairs(self.XML.children) do
+                self:traverseNodeAttributes(child,match,key,val)
             end
         end
 
-        function template:getNodeUserClass(node)
-            if node.data.class then return "."..node.data.class else return false end
-        end
-
+        --TODO: remove
         function template:nodeTableToObject(node)
             local obj = {}
             obj.node = node
 
             function obj:GetAttribute(k)
-                return self.node.data[k]
+                return self.node.attributes[k]
             end
 
             function obj:SetAttribute(k,v)
-                self.node.data[k] = v
+                self.node.attributes[k] = v
             end
 
             return obj
@@ -275,8 +238,8 @@ function mUI:FromTemplate(name)
                 self.panels[node.id]:SetKeyboardInputEnabled(true)
                 local oPaint = self.panels[node.id].Paint
                 self.panels[node.id].Paint = function(...)
-                    if node.data.CURSOR then
-                        self.panels[node.id]:SetCursor(node.data.CURSOR)
+                    if node.attributes.CURSOR then
+                        self.panels[node.id]:SetCursor(node.attributes.CURSOR)
                     else
                         self.panels[node.id]:SetCursor("user")
                     end
@@ -386,35 +349,35 @@ function mUI.parsers.unit(str,WH)
     end
 end
 
-function mUI.parsers.size(data,field,ignore)
+function mUI.parsers.size(attributes,field,isRelativeToViewPort)
     local fieldWH,size = (field == "w" or field == "x") and "w" or "h"
 
     if (field ~= fieldWH) and (fieldWH == "w") then
-        if data.left and data.right then
-            size = mUI.renderContext.viewPort.w * 0.5 - mUI.parsers.unit(data.left,"w") + mUI.parsers.unit(data.right,"w") - mUI.parsers.size(data,"w")/2
-        elseif data.left then
-            size = mUI.parsers.unit(data.left,"w")
-        elseif data.right then
-            size = mUI.renderContext.viewPort.w - mUI.parsers.unit(data.right,"w") - mUI.parsers.size(data,"w")
+        if attributes.left and attributes.right then
+            size = mUI.renderContext.viewPort.w * 0.5 - mUI.parsers.unit(attributes.left,"w") + mUI.parsers.unit(attributes.right,"w") - mUI.parsers.size(attributes,"w")/2
+        elseif attributes.left then
+            size = mUI.parsers.unit(attributes.left,"w")
+        elseif attributes.right then
+            size = mUI.renderContext.viewPort.w - mUI.parsers.unit(attributes.right,"w") - mUI.parsers.size(attributes,"w")
         else
-            error("One of 'left' or 'right' must be in a node ("..(data.id or data.class or "???")..")")
+            error("One of 'left' or 'right' must be in a node ("..(attributes.id or attributes.class or "???")..")")
         end
     elseif(field ~= fieldWH) then
-        if data.top and data.bottom then
-            size = mUI.renderContext.viewPort.h * 0.5 - mUI.parsers.unit(data.top,"h") + mUI.parsers.unit(data.bottom,"h") - mUI.parsers.size(data,"h")/2
-        elseif data.top then
-            size = mUI.parsers.unit(data.top,"h")
-        elseif data.bottom then
-            size = mUI.renderContext.viewPort.h - mUI.parsers.unit(data.bottom,"h") - mUI.parsers.size(data,"h")
+        if attributes.top and attributes.bottom then
+            size = mUI.renderContext.viewPort.h * 0.5 - mUI.parsers.unit(attributes.top,"h") + mUI.parsers.unit(attributes.bottom,"h") - mUI.parsers.size(attributes,"h")/2
+        elseif attributes.top then
+            size = mUI.parsers.unit(attributes.top,"h")
+        elseif attributes.bottom then
+            size = mUI.renderContext.viewPort.h - mUI.parsers.unit(attributes.bottom,"h") - mUI.parsers.size(attributes,"h")
         else
-            error("One of 'top' or 'bottom' must be in a node ("..(data.id or data.class or "???")..")")
+            error("One of 'top' or 'bottom' must be in a node ("..(attributes.id or attributes.class or "???")..")")
         end
     else
-        size = mUI.parsers.unit(data[field],fieldWH)
+        size = mUI.parsers.unit(attributes[field],fieldWH)
     end
 
 
-    if field == fieldWH or ignore then
+    if field == fieldWH or isRelativeToViewPort then
         return size
     else
         return size + mUI.renderContext.viewPort[field]
@@ -450,14 +413,6 @@ function mUI.parsers.font(data)
     return fontUID
 end
 
-function mUI:renderNode(template,name,node)
-    if self.renderers[name] then
-        self.renderers[name](template,node.data,node.text,node.id,node)
-    else
-        error("Unknown render node "..data)
-    end
-end
-
 function mUI:isMouseInViewPort(viewPort,mouseX,mouseY)
     local x1 = (viewPort.x <= mouseX)
     local x2 = ((viewPort.x + viewPort.w) >= mouseX)
@@ -466,37 +421,35 @@ function mUI:isMouseInViewPort(viewPort,mouseX,mouseY)
     return x1 and x2 and y1 and y2
 end
 
-function mUI:isMouseInChildrenViewPort(node,tag)
+function mUI:isMouseInChildrenViewPort(node)
     local mouseX,mouseY = gui.MousePos()
 
-    local ok = false
+    local inViewPort = false
     for _,child in ipairs(node.children) do
-        if child.data.data.x and child.data.data.y and child.data.data.w and child.data.data.h then
+        if child.attributes.x and child.attributes.y and child.attributes.w and child.attributes.h then
             self.renderContext:pushViewPort(
-                self.parsers.size(child.data.data,"x"),
-                self.parsers.size(child.data.data,"y"),
-                self.parsers.size(child.data.data,"w"),
-                self.parsers.size(child.data.data,"h")
+                self.parsers.size(child.attributes,"x"),
+                self.parsers.size(child.attributes,"y"),
+                self.parsers.size(child.attributes,"w"),
+                self.parsers.size(child.attributes,"h")
             )
-            ok = ok or (self:isMouseInViewPort(self.renderContext.viewPort,mouseX,mouseY) and not child.data.data.UNCLICKABLE)
-            ok = ok or self:isMouseInChildrenViewPort(child.data,child.tag)
+            inViewPort = inViewPort or (self:isMouseInViewPort(self.renderContext.viewPort,mouseX,mouseY) and not child.attributes.UNCLICKABLE)
+            inViewPort = inViewPort or self:isMouseInChildrenViewPort(child)
             self.renderContext:popViewPort()
-            if ok then
-                return true
-            end
+            if inViewPort then return true end
         end
     end
     return false
 end
 
 mUI.mouseIsOver = false
-function mUI:doMouseChecks(node,template)
+function mUI:doMouseChecks(template,node)
     local mouseX,mouseY = gui.MousePos()
 
-    if not node.autoMouseEvents and self:isMouseInViewPort(self.renderContext.viewPort,mouseX,mouseY) and not self:isMouseInChildrenViewPort(node) and not node.data.UNCLICKABLE then
+    if not node.autoMouseEvents and self:isMouseInViewPort(self.renderContext.viewPort,mouseX,mouseY) and not self:isMouseInChildrenViewPort(node) and not node.attributes.UNCLICKABLE then
         self.mouseIsOver = node.id
-        if node.data.CURSOR then
-            self:SetCursor(node.data.CURSOR)
+        if node.attributes.CURSOR then
+            self:SetCursor(node.attributes.CURSOR)
         else
             self:SetCursor("user")
         end
@@ -550,44 +503,52 @@ local function blur(x,y,factor)
     end
 end
 
-function mUI:parseRenderNode(name,tbl,template)
-    if tbl.data.BLUR then
+function mUI:renderNode(template,node)
+    if self.renderers[node.tag] then
+        self.renderers[node.tag](template,node)
+    else
+        error("Unknown render node "..node)
+    end
+end
+
+function mUI:parseRenderNode(template,node)
+    if node.attributes.BLUR then
         self.renderContext:pushViewPort(
-            self.parsers.size(tbl.data,"x"),
-            self.parsers.size(tbl.data,"y"),
-            self.parsers.size(tbl.data,"w"),
-            self.parsers.size(tbl.data,"h")
+            self.parsers.size(node.attributes,"x"),
+            self.parsers.size(node.attributes,"y"),
+            self.parsers.size(node.attributes,"w"),
+            self.parsers.size(node.attributes,"h")
         )
         blur(
-            self.parsers.size(tbl.data,"x"),
-            self.parsers.size(tbl.data,"y"),
-            larith:Evaluate((tbl.data.BLUR ~= "") and tbl.data.BLUR or 6)
+            self.parsers.size(node.attributes,"x"),
+            self.parsers.size(node.attributes,"y"),
+            larith:Evaluate((node.attributes.BLUR ~= "") and node.attributes.BLUR or 6)
         )
         self.renderContext:popViewPort()
     end
-    self:renderNode(template,name,tbl)
+    self:renderNode(template,node)
 
     local totalW,totalH = 0,0
     local overrideW,overrideH = 0,0
-    for _,data in ipairs(tbl.children) do
+    for _,child in ipairs(node.children) do
         self.renderContext:pushViewPort(
-            self.parsers.size(tbl.data,"x") + (tbl.data.RELATIVE_X and totalW or 0) + overrideW,
-            self.parsers.size(tbl.data,"y") + (tbl.data.RELATIVE_Y and totalH or 0) + overrideH,
-            self.parsers.size(tbl.data,"w"),
-            self.parsers.size(tbl.data,"h")
+            self.parsers.size(node.attributes,"x") + (node.attributes.RELATIVE_X and totalW or 0) + overrideW,
+            self.parsers.size(node.attributes,"y") + (node.attributes.RELATIVE_Y and totalH or 0) + overrideH,
+            self.parsers.size(node.attributes,"w"),
+            self.parsers.size(node.attributes,"h")
         )
 
-        if tbl.data.RELATIVE_X then
-            totalW = totalW + self.parsers.size(data.data.data,"w") + self.parsers.size(data.data.data,"x",true)
+        if node.attributes.RELATIVE_X then
+            totalW = totalW + self.parsers.size(child.attributes,"w") + self.parsers.size(child.attributes,"x",true)
         end
 
-        if tbl.data.RELATIVE_Y then
-            totalH = totalH +  self.parsers.size(data.data.data,"h") + self.parsers.size(data.data.data,"y",true)
+        if node.attributes.RELATIVE_Y then
+            totalH = totalH +  self.parsers.size(child.attributes,"h") + self.parsers.size(child.attributes,"y",true)
         end
 
-        self:doMouseChecks(tbl,template)
+        self:doMouseChecks(template,node)
 
-        self:parseRenderNode(data.tag,data.data,template)
+        self:parseRenderNode(template,child)
         self.renderContext:popViewPort()
     end
 end
@@ -612,15 +573,15 @@ function mUI:Render(template)
         end
     end
 
-    self:trapCursorOrKeyboard(template.XML.data.TRAP_MOUSE and true,template.XML.data.TRAP_KEYBOARD and true)
+    self:trapCursorOrKeyboard(template.XML.attributes.TRAP_MOUSE and true,template.XML.attributes.TRAP_KEYBOARD and true)
 
-    for _,data in ipairs(template.XML.children) do
-        self:parseRenderNode(data.tag,data.data,template)
+    for _,child in ipairs(template.XML.children) do
+        self:parseRenderNode(template,child)
     end
 
     template.lastDrewAt = mUI.frameID
     function template:idle()
-        if template.XML.data.TRAP_MOUSE then
+        if template.XML.children.TRAP_MOUSE then
             mUI:trapCursorOrKeyboard(false,false)
         end
 
@@ -640,18 +601,18 @@ function mUI:RegisterRenderer(name,fn)
     self.renderers[name] = fn
 end
 
-mUI:RegisterRenderer("Box",function(template,data,text,id)
-    draw.RoundedBox(larith:Evaluate(data.cornerRadius or 0),mUI.parsers.size(data,"x",true),mUI.parsers.size(data,"y",true),mUI.parsers.size(data,"w",true),mUI.parsers.size(data,"h",true),mUI.parsers.color(data.color))
+mUI:RegisterRenderer("Box",function(template,node)
+    draw.RoundedBox(larith:Evaluate(node.attributes.cornerRadius or 0),mUI.parsers.size(node.attributes,"x",true),mUI.parsers.size(node.attributes,"y",true),mUI.parsers.size(node.attributes,"w",true),mUI.parsers.size(node.attributes,"h",true),mUI.parsers.color(node.attributes.color))
 end)
 
-mUI:RegisterRenderer("Text",function(template,data,text,id)
-    draw.SimpleText(text,mUI.parsers.font(data),mUI.parsers.size(data,"x",true),mUI.parsers.size(data,"y",true),mUI.parsers.color(data.color),mUI.parsers.textAlign(data["font-horizontal-align"] or "left"),mUI.parsers.textAlign(data["font-vertical-align"] or "top"))
+mUI:RegisterRenderer("Text",function(template,node)
+    draw.SimpleText(node.text,mUI.parsers.font(node.attributes),mUI.parsers.size(node.attributes,"x",true),mUI.parsers.size(node.attributes,"y",true),mUI.parsers.color(node.attributes.color),mUI.parsers.textAlign(node.attributes["font-horizontal-align"] or "left"),mUI.parsers.textAlign(node.attributes["font-vertical-align"] or "top"))
 end)
 
-mUI:RegisterRenderer("ProfilePicture",function(template,data,text,id,node)
-    template:bindPanel(node,"AvatarImage"):SetSteamID(data.steamID64 or util.SteamIDTo64(data.steamID),larith:Evaluate(data.avatarSize or 128))
-    template:bindPanel(node,"AvatarImage"):SetPos(mUI.parsers.size(data,"x",false),mUI.parsers.size(data,"y",false))
-    template:bindPanel(node,"AvatarImage"):SetSize(mUI.parsers.size(data,"w",false),mUI.parsers.size(data,"h",false))
+mUI:RegisterRenderer("ProfilePicture",function(template,node)
+    template:bindPanel(node,"AvatarImage"):SetSteamID(node.attributes.steamID64 or util.SteamIDTo64(node.attributes.steamID),larith:Evaluate(node.attributes.avatarSize or 128))
+    template:bindPanel(node,"AvatarImage"):SetPos(mUI.parsers.size(node.attributes,"x",false),mUI.parsers.size(node.attributes,"y",false))
+    template:bindPanel(node,"AvatarImage"):SetSize(mUI.parsers.size(node.attributes,"w",false),mUI.parsers.size(node.attributes,"h",false))
 end)
 
 mUI.frameID = 0
