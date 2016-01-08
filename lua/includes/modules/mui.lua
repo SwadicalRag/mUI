@@ -82,7 +82,7 @@ function mUI:FromTemplate(name)
         end
 
         template.lastDataTime = 0
-        template.templateUpdateInterval = 1/24
+        template.templateUpdateInterval = 24/1
         function template:getDataInternal()
             if (SysTime() - self.lastDataTime) > self.templateUpdateInterval then
                 self:buildTemplate()
@@ -303,7 +303,13 @@ mUI.renderContext.original = mUI.renderContext.original or {
     w = ScrW(),
     h = ScrH(),
     x = 0,
-    y = 0
+    y = 0,
+    scr = {
+        0,
+        0,
+        ScrW(),
+        ScrH()
+    }
 }
 mUI.renderContext.contextStack = mUI.renderContext.contextStack or {mUI.renderContext.original}
 mUI.renderContext.viewPort = mUI.renderContext.viewPort or mUI.renderContext.original
@@ -313,15 +319,14 @@ function mUI:ResolutionChange(w,h)
     mUI.renderContext.original.h = h
 end
 
-function mUI.renderContext:popViewPort()
+function mUI.renderContext:popVirtualViewPort()
     self.contextStack[#self.contextStack] = nil
     local viewPort = self.contextStack[#self.contextStack] or self.original
     self.viewPort = viewPort
-    cam.End2D()
-    render.SetViewPort(viewPort.x,viewPort.y,viewPort.w,viewPort.h)
+    return viewPort
 end
 
-function mUI.renderContext:pushViewPort(x,y,w,h)
+function mUI.renderContext:pushVirtualViewPort(x,y,w,h)
     local viewPort = {}
     self.viewPort = viewPort
     self.contextStack[#self.contextStack+1] = viewPort
@@ -329,8 +334,33 @@ function mUI.renderContext:pushViewPort(x,y,w,h)
     viewPort.h = h or self.original.h
     viewPort.x = x
     viewPort.y = y
+    return viewPort
+end
+
+function mUI.renderContext:pushViewPort(x,y,w,h,ce_x,ce_y)
+    local viewPort = self:pushVirtualViewPort(x,y,w,h)
+
     render.SetViewPort(x,y,viewPort.w,viewPort.h)
     cam.Start2D()
+
+    viewPort.scr = {viewPort.x,viewPort.y,ce_x or (viewPort.w+viewPort.x),ce_y or (viewPort.h+viewPort.y),false}
+    render.SetScissorRect(viewPort.x,viewPort.y,ce_x or (viewPort.w+viewPort.x),ce_y or (viewPort.h+viewPort.y),true)
+end
+
+function mUI.renderContext:pushRelativeViewPort(x,y,w,h)
+    local viewPort = self.contextStack[#self.contextStack] or self.original
+
+    local parent_width,parent_height = viewPort.w,viewPort.h
+
+    self:pushViewPort(viewPort.x + x,viewPort.y + y,w,h,viewPort.x + (parent_width),viewPort.y + (parent_height))
+end
+
+function mUI.renderContext:popViewPort()
+    local viewPort = self:popVirtualViewPort()
+
+    render.SetScissorRect(unpack(viewPort.scr))
+    cam.End2D()
+    render.SetViewPort(viewPort.x,viewPort.y,viewPort.w,viewPort.h)
 end
 
 function mUI.parsers.color(colorStr,node)
@@ -387,7 +417,7 @@ function mUI.parsers.unit(str,WH)
     end
 end
 
-function mUI.parsers.size(attributes,field,isRelativeToViewPort)
+function mUI.parsers.size(attributes,field,isRelativeToViewPort,skipRelativeXYAdjustments,skipScrollAdjustments)
     local fieldWH,size = (field == "w" or field == "x") and "w" or "h"
 
     if (field ~= fieldWH) and (fieldWH == "w") then
@@ -416,6 +446,25 @@ function mUI.parsers.size(attributes,field,isRelativeToViewPort)
         error("Expected a "..field.." attribute but saw none!")
     end
 
+    if not skipScrollAdjustments then
+        if attributes._overrideInternalScrollX and field == "x" then
+            size = size + attributes._overrideInternalScrollX
+        end
+
+        if attributes._overrideInternalScrollY and field == "y" then
+            size = size + attributes._overrideInternalScrollY
+        end
+    end
+
+    if not skipRelativeXYAdjustments then
+        if attributes._overrideInternalX and field == "x" then
+            size = size + attributes._overrideInternalX
+        end
+
+        if attributes._overrideInternalY and field == "y" then
+            size = size + attributes._overrideInternalY
+        end
+    end
 
     if field == fieldWH or isRelativeToViewPort then
         return size
@@ -502,6 +551,18 @@ function mUI:isMouseInSolitaryNode(node)
     },mouseX,mouseY)
 end
 
+function mUI:doInternalMouseChecks(template,node,event,enum)
+    if input.IsMouseDown(enum) then
+        if not template:getNodeAttribute(node,"IMC_"..event..enum) then
+            template:runNodeEvent(node,event,enum)
+            template:setNodeAttribute(node,"IMC_"..event..enum,true)
+        end
+    elseif template:getNodeAttribute(node,"IMC_"..event..enum) then
+        template:runNodeEvent(node,event.."End",enum)
+        template:setNodeAttribute(node,"IMC_"..event..enum,false)
+    end
+end
+
 mUI.mouseIsOver = false
 function mUI:doMouseChecks(template,node)
     local mouseX,mouseY = gui.MousePos()
@@ -525,25 +586,8 @@ function mUI:doMouseChecks(template,node)
             template:runNodeEvent(node,"onCursorEntered")
             template:setNodeAttribute(node,"onCursorEntered",true)
         else
-            if input.IsMouseDown(MOUSE_LEFT) then
-                if not template:getNodeAttribute(node,"MOUSE_LEFT") then
-                    template:runNodeEvent(node,"onClick",MOUSE_LEFT)
-                    template:setNodeAttribute(node,"MOUSE_LEFT",true)
-                end
-            elseif template:getNodeAttribute(node,"MOUSE_LEFT") then
-                template:runNodeEvent(node,"onClickEnd",MOUSE_LEFT)
-                template:setNodeAttribute(node,"MOUSE_LEFT",false)
-            end
-
-            if input.IsMouseDown(MOUSE_RIGHT) then
-                if not template:getNodeAttribute(node,"MOUSE_RIGHT") then
-                    template:runNodeEvent(node,"onClick",MOUSE_RIGHT)
-                    template:setNodeAttribute(node,"MOUSE_RIGHT",true)
-                end
-            elseif template:getNodeAttribute(node,"MOUSE_RIGHT") then
-                template:runNodeEvent(node,"onClickEnd",MOUSE_RIGHT)
-                template:setNodeAttribute(node,"MOUSE_RIGHT",false)
-            end
+            self:doInternalMouseChecks(template,node,"onClick",MOUSE_LEFT)
+            self:doInternalMouseChecks(template,node,"onClick",MOUSE_RIGHT)
         end
     else
         if template:getNodeAttribute(node,"onCursorEntered") then
@@ -613,49 +657,114 @@ function mUI:parseRenderNode(template,node)
             self.parsers.size(node.attributes,"h")
         )
         blur(
-            self.parsers.size(node.attributes,"x"),
-            self.parsers.size(node.attributes,"y"),
+            self.parsers.size(node.attributes,"x",false,true),
+            self.parsers.size(node.attributes,"y",false,true),
             larith:Evaluate((node.attributes.BLUR ~= "") and node.attributes.BLUR or 6)
         )
         self.renderContext:popViewPort()
     end
     self:renderNode(template,node)
 
-    local totalW,totalH = 0,0
-    local overrideW,overrideH = 0,0
-    for _,child in ipairs(node.children) do
-        self.renderContext:pushViewPort(
-            self.parsers.size(node.attributes,"x") + (node.attributes.RELATIVE_X and totalW or 0) + overrideW,
-            self.parsers.size(node.attributes,"y") + (node.attributes.RELATIVE_Y and totalH or 0) + overrideH,
-            self.parsers.size(node.attributes,"w"),
-            self.parsers.size(node.attributes,"h")
-        )
+    local actualTotalW,actualTotalH
+    local scrollOverrideX,scrolloverrideY = 0,0
 
+    if node.tag == "Scroll" then
+        template.scrolls[#template.scrolls+1] = node
+        local totalW,totalH = 0,0
+        for _,child in ipairs(node.children) do
+            self.renderContext:pushVirtualViewPort(
+                self.parsers.size(node.attributes,"x") + (node.attributes.RELATIVE_X and totalW or 0),
+                self.parsers.size(node.attributes,"y") + (node.attributes.RELATIVE_Y and totalH or 0),
+                self.parsers.size(node.attributes,"w"),
+                self.parsers.size(node.attributes,"h")
+            )
+
+            if node.attributes.RELATIVE_X then
+                totalW = totalW + self.parsers.size(child.attributes,"w") + self.parsers.size(child.attributes,"x",true)
+            end
+
+            if node.attributes.RELATIVE_Y then
+                totalH = totalH +  self.parsers.size(child.attributes,"h") + self.parsers.size(child.attributes,"y",true)
+            end
+
+            self.renderContext:popVirtualViewPort()
+        end
+
+        if node.attributes.scrollDir ~= "x" and node.attributes.scrollDir ~="y" then
+            error("Attribute 'scrollDir' of tag Scroll must be equal to 'x' or 'y'")
+        end
+
+        template:setNodeAttribute(node,"scroll",template:getNodeAttribute(node,"scroll") or 0)
+
+        local scrollDir = node.attributes.scrollDir
+        local scrollDirWH = (scrollDir == "x") and "w" or "h"
+        local maxScroll = ((scrollDirWH == "w") and totalW or totalH) - mUI.parsers.size(node.attributes,scrollDir)
+        template:setNodeAttribute(node,"maxScroll",math.max(0,maxScroll))
+        print(template:getNodeAttribute(node,"scroll"))
+
+        if scrollDir == "x" then
+            node.attributes._overrideInternalScrollX = - template:getNodeAttribute(node,"scroll")
+        end
+
+        if scrollDir == "y" then
+            node.attributes._overrideInternalScrollY = - template:getNodeAttribute(node,"scroll")
+        end
+
+        actualTotalW = totalW
+        actualTotalH = totalH
+    end
+
+    if #node.children > 0 then
+        self.renderContext:pushRelativeViewPort(
+            self.parsers.size(node.attributes,"x",true,false,true),
+            self.parsers.size(node.attributes,"y",true,false,true),
+            self.parsers.size(node.attributes,"w",true,false,true),
+            self.parsers.size(node.attributes,"h",true,false,true)
+        )
+    end
+
+    local totalW,totalH = 0,0
+    for _,child in ipairs(node.children) do
         mUI.lastRenderedNode = child
         if node.attributes.RELATIVE_X then
-            totalW = totalW + self.parsers.size(child.attributes,"w") + self.parsers.size(child.attributes,"x",true)
+            child.attributes._overrideInternalX = totalW
+            totalW = self.parsers.size(child.attributes,"w") + self.parsers.size(child.attributes,"x",true,false,true)
         end
 
         if node.attributes.RELATIVE_Y then
-            totalH = totalH +  self.parsers.size(child.attributes,"h") + self.parsers.size(child.attributes,"y",true)
+            child.attributes._overrideInternalY = totalH
+            totalH = self.parsers.size(child.attributes,"h") + self.parsers.size(child.attributes,"y",true,false,true)
+        end
+
+        if node.attributes._overrideInternalScrollX then
+            child.attributes._overrideInternalScrollX = node.attributes._overrideInternalScrollX
+        end
+
+        if node.attributes._overrideInternalScrollY then
+            child.attributes._overrideInternalScrollY = node.attributes._overrideInternalScrollY
         end
 
         self:doMouseChecks(template,node)
 
         self:parseRenderNode(template,child)
-        self.renderContext:popViewPort()
     end
 
     if #node.children == 0 then
         self:doMouseChecks(template,node)
+    else
+        self.renderContext:popViewPort()
     end
 end
 
-hook.Add("VGUIMousePressed","swadical.mUI.panelOverride",function(clickedPanel,code)
-    for _,template in ipairs(mUI.activeTemplates) do
-        for _,pnl in pairs(template.panels) do
-            if clickedPanel == pnl then
-                pnl.template:runNodeEvent(pnl.node,"onClick",code)
+mUI.scrollStep = 1
+hook.Add("Move","swadical.mUI.mouseOverride",function(clickedPanel,code)
+    if input.WasMousePressed(MOUSE_WHEEL_UP) or input.WasMousePressed(MOUSE_WHEEL_DOWN) then
+        for _,template in ipairs(mUI.activeTemplates) do
+            for _,node in pairs(template.scrolls or {}) do
+                local maxScrollAdj = template:getNodeAttribute(node,"maxScroll")
+                local scrollStep = (input.WasMousePressed(MOUSE_WHEEL_UP) and 1 or -1) * mUI.scrollStep
+
+                template:setNodeAttribute(node,"scroll",math.min(maxScrollAdj,math.max(0,template:getNodeAttribute(node,"scroll") + scrollStep)))
             end
         end
     end
@@ -665,6 +774,7 @@ function mUI:Render(template)
     template:getDataInternal()
 
     self:trapCursorOrKeyboard(template.XML.attributes.TRAP_MOUSE and true,template.XML.attributes.TRAP_KEYBOARD and true)
+    template.scrolls = {}
 
     template.lastDrewAt = mUI.frameID
     function template:idle()
@@ -698,10 +808,12 @@ end
 mUI:RegisterRenderer("Block",function()end)
 
 mUI:RegisterRenderer("Box",function(template,node)
+    DebugInfo(tonumber(node.id:match("(%d+)$")),node.attributes._overrideInternalScrollY and mUI.parsers.size(node.attributes,"y",true) or "n/a")
     draw.RoundedBox(larith:Evaluate(node.attributes.cornerRadius or 0),mUI.parsers.size(node.attributes,"x",true),mUI.parsers.size(node.attributes,"y",true),mUI.parsers.size(node.attributes,"w",true),mUI.parsers.size(node.attributes,"h",true),mUI.parsers.color(node.attributes.color))
 end)
 
 mUI:RegisterRenderer("Text",function(template,node)
+    DebugInfo(tonumber(node.id:match("(%d+)$"))+40,node.attributes._overrideInternalScrollY and mUI.parsers.size(node.attributes,"y",true) or "n/a")
     draw.SimpleText(node.text,mUI.parsers.font(node.attributes),mUI.parsers.size(node.attributes,"x",true),mUI.parsers.size(node.attributes,"y",true),mUI.parsers.color(node.attributes.color),mUI.parsers.textAlign(node.attributes["font-horizontal-align"] or "left"),mUI.parsers.textAlign(node.attributes["font-vertical-align"] or "top"))
 end)
 
@@ -712,6 +824,8 @@ mUI:RegisterRenderer("ProfilePicture",function(template,node)
 
     template:bindPanel(node,"AvatarImage"):Render()
 end)
+
+mUI:RegisterRenderer("Scroll",function(template,node)end)
 
 hook.Add("DrawOverlay","swadical.mUI.autoRender",function()
     if not IsValid(mUI.PlaceholderPanel) then
