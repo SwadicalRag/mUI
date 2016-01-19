@@ -269,10 +269,17 @@ end
 
 function self.Parsers.Slash(parser,token)
     if parser.isInBody then return end
-    assert(parser.mode == PARSER.TAG_NEED_IDENT,"Unexpected slash at line "..token.line.." col "..token.col.."!")
+    assert((parser.mode == PARSER.TAG_NEED_IDENT) or (parser.mode == PARSER.TAG_NEED_CLOSE),"Unexpected slash at line "..token.line.." col "..token.col.."!")
 
-    parser.tempBuffer1 = nil
-    parser.mode = PARSER.TAG_CLOSE_IDENT
+    if parser.mode == PARSER.TAG_NEED_CLOSE then
+        parser.tempBuffer1._id = parser.currentNode._id.."."..parser.tempBuffer1.identifier..(#parser.currentNode.children+1)
+        parser:pushChild(parser.tempBuffer1)
+        parser.tempBuffer1 = nil
+        parser.mode = PARSER.TAG_NEED_CLOSE_ONLY
+    else
+        parser.tempBuffer1 = nil
+        parser.mode = PARSER.TAG_CLOSE_IDENT
+    end
 end
 
 function self.Parsers.Identifier(parser,token)
@@ -324,6 +331,7 @@ function self.Parsers.TagClose(parser,token)
     if parser.mode == PARSER.TAG_NEED_CLOSE_ONLY then
         parser:popChild()
     else
+        parser.tempBuffer1._id = parser.currentNode._id.."."..parser.tempBuffer1.identifier..(#parser.currentNode.children+1)
         parser:pushChild(parser.tempBuffer1)
         parser.tempBuffer1 = nil
     end
@@ -387,6 +395,7 @@ function self:ParseTokens(tokens)
         attributes = {},
         parent = false,
         identifier = "main",
+        _id = "main",
         token = false
     }
     parser.isInBody = true
