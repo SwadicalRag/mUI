@@ -1,4 +1,4 @@
-mUI.RenderEngine:Listen("PreRender","viewManager",function(tag)
+mUI.RenderEngine:Listen("SetupViewData","viewManager",function(tag)
     tag.renderData = {}
 
     if tag.attributes.left and tag.attributes.right then

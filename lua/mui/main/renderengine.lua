@@ -34,6 +34,7 @@ function self:renderInternal(tag)
 end
 
 function self:walk(tag)
+    self:protectedTagCall(tag,self.Emit,self,"SetupViewData",tag)
     self:protectedTagCall(tag,self.Emit,self,"PreRender",tag)
     self:renderInternal(tag)
     self:protectedTagCall(tag,self.Emit,self,"PostRender",tag)

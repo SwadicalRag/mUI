@@ -1,7 +1,21 @@
 <Box top="25%" left="25%" w="50%" h="50%" color="rgba(255, 117, 117, 0.81)">
-    <Box top="25%" left="25%" w="50%" h="50%" color="rgba(255, 0, 0, 0.81)">
-        <Box top="0px" right="0px" w="50%" h="50%" color="rgba(20, 255, 0, 0.81)">
-
-        </Box>
+    <Box top="25%" left="25%" w="50%" h="50%" color="rgba(255, 117, 117, 0.81)">
+    <Text
+        font="Roboto"
+        top="24%"
+        left="24%"
+        font-size="40px"
+        font-weight="1px"
+        color="rgb(0,0,0)"
+        font-vertical-align="center"
+        font-horizontal-align="center">FINE</Text>
+    <Text
+        font="Roboto"
+        top="60%"
+        left="60%"
+        font-size="200px"
+        color="rgb(0,0,0)"
+        font-vertical-align="center"
+        font-horizontal-align="center">ASS</Text>
     </Box>
 </Box>

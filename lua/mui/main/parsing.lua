@@ -18,15 +18,21 @@ function self:Size(str,axis)
     if str:sub(-1,-1) == "%" then
         size = mUI.ArithmeticParser:Evaluate(str:sub(1,-2))/100
     else
-        size = mUI.ArithmeticParser:Evaluate(self:resolveUnits(str))
+        return mUI.ArithmeticParser:Evaluate(self:resolveUnits(str))
     end
 
     if size then
-        if axis == self:resolveAxes(axis) then
-            --size = size * mUI.ViewManager.defaultView[self:resolveAxes(axis)]
-            size = size * mUI.ViewManager:GetCurrentView()[self:resolveAxes(axis)]
+        if axis then
+            if axis == self:resolveAxes(axis) then
+                --size = size * mUI.ViewManager.defaultView[self:resolveAxes(axis)]
+                size = size * mUI.ViewManager:GetCurrentView()[self:resolveAxes(axis)]
+            else
+                size = size * mUI.ViewManager:GetCurrentView()[self:resolveAxes(axis)]
+            end
         else
-            size = size * mUI.ViewManager:GetCurrentView()[self:resolveAxes(axis)]
+            local currentView = mUI.ViewManager:GetCurrentView()
+
+            size = size * (currentView.x^2 + currentView.y^2)^0.5
         end
 
         return size
@@ -51,4 +57,8 @@ function self:Color(str)
     else
         error("Cannot parse color "..str)
     end
+end
+
+function self:TextAlign(str)
+    return _G["TEXT_ALIGN_"..str:upper()] or TEXT_ALIGN_LEFT
 end

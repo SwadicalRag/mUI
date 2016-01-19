@@ -12,9 +12,8 @@ mUI.Loader:LoadFolderRecursive("/mui/dependencies/")
 
 mUI.Loader:LoadFile("/mui/sync.lua")
 if CLIENT then
-    mUI.Loader:LoadFile("/mui/main/init.lua")
-    mUI.Loader:LoadFolder("/mui/dependencies/")
     mUI.Loader:LoadFolder("/mui/classes/")
+    mUI.Loader:LoadFile("/mui/main/init.lua")
 else
     mUI.Loader:ShareFolderRecursive("/mUI/main/")
     mUI.Loader:ShareFolder("/mUI/classes/")
