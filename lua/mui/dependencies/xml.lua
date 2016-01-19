@@ -399,6 +399,10 @@ function self:ParseTokens(tokens)
         parser:advanceIdx()
     end
 
+    if parser.mode ~= PARSER.IDLE then
+        error("Unexpected EOF!")
+    end
+
     if parser.currentNode ~= parser.AST then
         error("Tag "..parser.currentNode.identifier.." was not closed! (line "..parser.currentNode.token.line.." col "..parser.currentNode.token.col..")")
     end

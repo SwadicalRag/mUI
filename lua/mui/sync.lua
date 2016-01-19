@@ -30,7 +30,7 @@ if SERVER then
                 TemplateFS:Write(fileName,file.Read(path..fileName,loc))
 
                 local serialized = mUI.bON.serialize({
-                    filePath = filePath,
+                    filePath = "/templates/"..filePath,
                     data = file.Read(path..fileName,loc)
                 })
                 local compressed = util.Compress(serialized)
