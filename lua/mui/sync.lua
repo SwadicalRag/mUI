@@ -59,7 +59,7 @@ if SERVER then
     buildTemplateFS()
     refreshTemplateFS()
 
-    timer.Create("swadical.mUI.rebuild",0.5,0,refreshTemplateFS)
+    timer.Create("swadical.mUI.rebuild",0.1,0,refreshTemplateFS)
 
     hook.Add("PlayerInitialSpawn","swadical.mUI.templateSender",function(ply)
         local serialized = mUI.bON.serialize(TemplateFS:ToData())

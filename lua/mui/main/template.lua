@@ -6,6 +6,8 @@ function self:Load(id)
         local Template = banana.New("UITemplate")
         Template:SetXMLAST(mUI.XML:Parse(mUI.FS:Read("/templates/"..id..".xml")))
         return Template
+    else
+        return false
     end
 end
 
