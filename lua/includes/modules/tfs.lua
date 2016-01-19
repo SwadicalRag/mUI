@@ -10,7 +10,7 @@ local unpack = table.unpack or unpack
 local setmetatable = setmetatable
 local getmetatable = (debug and debug.getmetatable) or getmetatable
 
-TFS = {}
+local TFS = {}
 
 TFS.BaseFS = {}
 do
@@ -41,6 +41,7 @@ do
 			[".."] = dir,
 			__ident = path..name.."/"
 		}
+		dir[name]["."] = dir[name]
 	end
 
 	function FS:Exists(name)
@@ -229,6 +230,45 @@ do
 		end
 	end
 
+	function FS:Pack(sourceDir,mountTag,targetDir,packedFiles,packedFolders)
+		packedFiles,packedFolders = packedFiles or 0,packedFolders or 0
+		print("TD",targetDir)
+		if targetDir:sub(-1,-1) ~= "/" then targetDir = targetDir.."/" end
+		local targetDir,path,dir = self:ChangeDir(targetDir,false,true)
+		local folderExists,isFolder = self:Exists(targetDir)
+		
+		if not folderExists then
+			self:CreateDir(targetDir)
+		elseif not isFolder then
+			error(self:Dir()..targetDir.." is not a folder!")
+		end
+		
+		self:ChangeDir(targetDir)
+		
+		if not sourceDir:match("[/\\]$") then
+			sourceDir = sourceDir.."/"
+		end
+
+		local files,folders = file.Find(sourceDir.."*",mountTag)
+
+		for _,fileName in ipairs(files) do
+			self:Write(fileName,file.Read(sourceDir..fileName,mountTag))
+			packedFiles = packedFiles + 1
+		end
+
+		for _,folderName in ipairs(folders) do
+			self:CreateDir(folderName)
+			print("SF",sourceDir..folderName.."/")
+			local cPackedFiles,cPackedFolders = self:Pack(sourceDir..folderName.."/",mountTag,folderName)
+			packedFiles,packedFolders = packedFiles + cPackedFiles,packedFolders + cPackedFolders
+			packedFolders = packedFolders + 1
+		end
+		
+		self:ChangeDir("..")
+
+		return packedFiles,packedFolders
+	end
+
 	function FS:ToData()
 		return {
 			data = self.data,
@@ -290,5 +330,7 @@ function TFS.FromData(data)
 	FS.currentDir = data.data
 	return FS
 end
+
+_G.TFS = TFS
 
 return TFS
