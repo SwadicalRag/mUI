@@ -7,12 +7,13 @@ self.defaultView = {
     w = ScrW(),
     h = ScrH()
 }
+self.defaultView.limit = self.defaultView
 self.viewStack = {
     self.defaultView
 }
 
 function self:cancelView(view,newView)
-    render.SetScissorRect(view.x,view.y,view.x+view.w,view.y+view.h,false)
+    render.SetScissorRect(view.limit.x,view.limit.y,view.limit.x+view.limit.w,view.limit.y+view.limit.h,false)
     cam.End2D()
     render.SetViewPort(newView.x,newView.y,newView.w,newView.h)
 end
@@ -20,7 +21,7 @@ end
 function self:applyView(view)
     render.SetViewPort(view.x,view.y,view.w,view.h)
     cam.Start2D()
-    render.SetScissorRect(view.x,view.y,view.x+view.w,view.y+view.h,true)
+    render.SetScissorRect(view.limit.x,view.limit.y,view.limit.x+view.limit.w,view.limit.y+view.limit.h,true)
 end
 
 function self:PushView(x,y,w,h)
@@ -31,12 +32,29 @@ function self:PushView(x,y,w,h)
         w = w,
         h = h
     }
+    newView.limit = {
+        x = currentView.x + x,
+        y = currentView.y + y,
+        w = w,
+        h = h
+    }
 
     local max_x = currentView.x + currentView.w
     local max_y = currentView.y + currentView.h
 
-    newView.w = math.min(newView.x + newView.w,max_x) - newView.x
-    newView.h = math.min(newView.y + newView.h,max_y) - newView.y
+    if newView.x < currentView.x then
+        newView.limit.x = currentView.x
+        newView.limit.w = newView.w - (currentView.x - newView.x)
+    else
+        newView.w = math.min(newView.x + newView.w,max_x) - newView.x
+    end
+
+    if newView.y < currentView.y then
+        newView.limit.y = currentView.y
+        newView.limit.h = newView.h - (currentView.y - newView.y)
+    else
+        newView.h = math.min(newView.y + newView.h,max_y) - newView.y
+    end
 
     self.viewStack[#self.viewStack + 1] = newView
 
