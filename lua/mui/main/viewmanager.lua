@@ -24,7 +24,16 @@ function self:applyView(view)
     render.SetScissorRect(view.limit.x,view.limit.y,view.limit.x+view.limit.w,view.limit.y+view.limit.h,true)
 end
 
-function self:PushView(x,y,w,h)
+function self:PushWeirdView(x,y,w,h,c_x,c_y,c_w,c_h)
+    return self:PushView(x,y,w,h,{
+        x = c_x,
+        y = c_y,
+        w = c_w,
+        h = c_h
+    })
+end
+
+function self:PushView(x,y,w,h,limit)
     local currentView = self.viewStack[#self.viewStack]
     local newView = {
         x = currentView.x + x,
@@ -32,7 +41,7 @@ function self:PushView(x,y,w,h)
         w = w,
         h = h
     }
-    newView.limit = {
+    newView.limit = limit or {
         x = currentView.x + x,
         y = currentView.y + y,
         w = w,
