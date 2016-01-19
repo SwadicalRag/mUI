@@ -255,6 +255,9 @@ function self.Parsers.Whitespace()end
 function self.Parsers.NewLine(parser,token)
     parser.currentNode.text = parser.currentNode.text:sub(1,-1-#token.data)
 end
+function self.Parsers.Tab(parser,token)
+    parser.currentNode.text = parser.currentNode.text:sub(1,-1-#token.data)
+end
 
 function self.Parsers.TagOpen(parser,token)
     assert(parser.mode == PARSER.IDLE,"Unexpected tag opening at line "..token.line.." col "..token.col.."!")
