@@ -138,7 +138,7 @@ function self:Tokenize(str)
                 tempBuffer1 = ""
                 tempBuffer2 = mode
                 mode = TOKENIZER.ESCAPED
-            elseif char:match("[A-Za-z0-9]") then
+            elseif char:match("[^<>\r\n =]") then
                 tokens[#tokens + 1] = {
                     type = "Identifier",
                     data = char,
@@ -150,7 +150,7 @@ function self:Tokenize(str)
                 error("Unexpected character: "..char.." at line "..line.." col "..col)
             end
         elseif mode == TOKENIZER.IDENTIFIER then
-            if char:match("[A-Za-z0-9]") then
+            if char:match("[^<>\r\n =]") then
                 tokens[#tokens].data = tokens[#tokens].data..char
             else
                 mode = TOKENIZER.IDLE
@@ -265,6 +265,7 @@ function self.Parsers.TagOpen(parser,token)
 end
 
 function self.Parsers.Slash(parser,token)
+    if parser.isInBody then return end
     assert(parser.mode == PARSER.TAG_NEED_IDENT,"Unexpected slash at line "..token.line.." col "..token.col.."!")
 
     parser.tempBuffer1 = nil
@@ -277,6 +278,7 @@ function self.Parsers.Identifier(parser,token)
 
         parser.tempBuffer1.identifier = token.data
     elseif parser.mode == PARSER.TAG_NEED_CLOSE then
+        assert(token.data:match("[A-Za-z0-9%-]"),"Token contains non alphanumeric symbols!")
         parser.tempBuffer2 = token.data
         parser.mode = PARSER.IDENT_NEED_EQUALS
     elseif parser.mode == PARSER.TAG_CLOSE_IDENT then
@@ -290,6 +292,7 @@ function self.Parsers.Identifier(parser,token)
 end
 
 function self.Parsers.Equals(parser,token)
+    if parser.isInBody then return end
     assert(parser.mode == PARSER.IDENT_NEED_EQUALS,"Unexpected '=' at line "..token.line.." col "..token.col.."!")
     parser.mode = PARSER.IDENT_NEED_QUOTE
 end
@@ -383,6 +386,7 @@ function self:ParseTokens(tokens)
         identifier = "main",
         token = false
     }
+    parser.isInBody = true
     parser.currentNode = parser.AST
 
     for _,token in ipairs(tokens) do
@@ -402,9 +406,3 @@ end
 function self:Parse(xml)
     return self:ParseTokens(self:Tokenize(xml))
 end
-
-PrintTable(self:Parse([[
-<hello>&nl;&nl;&nl;
-its me&lt;&gt;
-</hello>
-]]))
