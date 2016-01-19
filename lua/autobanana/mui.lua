@@ -16,7 +16,7 @@ if CLIENT then
     mUI.Loader:LoadFolder("/mui/dependencies/")
     mUI.Loader:LoadFolder("/mui/classes/")
 else
-    mUI.Loader:ShareFolder("/mUI/main/")
+    mUI.Loader:ShareFolderRecursive("/mUI/main/")
     mUI.Loader:ShareFolder("/mUI/classes/")
 end
 
