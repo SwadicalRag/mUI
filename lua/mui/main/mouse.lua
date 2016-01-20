@@ -56,6 +56,10 @@ function self:GetMouseTag()
     return tag
 end
 
+hook.Add("Move","swadical.mUI.cursor",function()
+    mUI.RenderEngine:Emit("ProcessCursorEvents",self:GetMouseTag())
+end)
+
 hook.Add("PreRender","swadical.mUI.clearRenderStack",function()
     self:ClearStack()
 end)

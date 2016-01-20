@@ -7,11 +7,15 @@ mUI.DBase = self
 
 self.panels = {}
 function self:RemoveAllPanels()
-    self.basePanel:Remove()
-    self.basePanel = nil
+    if IsValid(self.basePanel) then
+        self.basePanel:Remove()
+        self.basePanel = nil
+    end
 
     for id,pnl in pairs(self.panels) do
-        pnl:Remove()
+        if IsValid(pnl) then
+            pnl:Remove()
+        end
     end
 
     self.panels = {}
@@ -39,6 +43,7 @@ end
 self.trapping = {}
 function self:trapInternal()
     local isTrapping = (self.trapping.cursor or self.trapping.keyboard)
+    print(self.trapping.internal,isTrapping)
     if self.trapping.internal ~= isTrapping then
         if isTrapping then
             self.basePanel:Show()
@@ -55,9 +60,11 @@ function self:TrapCursor(status)
     status = tobool(status)
 
     if self.trapping.cursor ~= status then
-        self.basePanel:SetMouseInputEnabled(status)
-
         self.trapping.cursor = status
+
+        self:trapInternal()
+        self.basePanel:SetMouseInputEnabled(status)
+        self.basePanel:SetKeyboardInputEnabled(self.trapping.keyboard)
     end
 end
 
@@ -65,16 +72,20 @@ function self:TrapKeyboard(status)
     status = tobool(status)
 
     if self.trapping.keyboard ~= status then
-        self.basePanel:SetKeyboardInputEnabled(status)
-
         self.trapping.keyboard = status
+
+        self:trapInternal()
+        self.basePanel:SetMouseInputEnabled(self.trapping.mouse)
+        self.basePanel:SetKeyboardInputEnabled(status)
     end
 end
 
 self.cursor = "user"
 function self:SetCursor(cursor)
     if self.cursor ~= cursor then
+        print(cursor)
         self.basePanel:SetCursor(cursor)
+        self.cursor = cursor
     end
 end
 

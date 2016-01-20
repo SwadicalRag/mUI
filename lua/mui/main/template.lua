@@ -4,7 +4,8 @@ mUI.Template = self
 function self:Load(id)
     if mUI.FS:Exists("/templates/"..id..".xml") then
         local Template = banana.New("UITemplate")
-        Template:SetXMLAST(mUI.XML:Parse(mUI.FS:Read("/templates/"..id..".xml")))
+        Template:SetXML(mUI.FS:Read("/templates/"..id..".xml"))
+        Template:Update()
         return Template
     else
         return false

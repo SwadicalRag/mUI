@@ -42,8 +42,8 @@ end,0)
 
 mUI.RenderEngine:Listen("EnterChild","viewManager",function(parent)
     mUI.ViewManager:PushView(parent.renderData.x,parent.renderData.y,parent.renderData.w,parent.renderData.h)
-end)
+end,0)
 
 mUI.RenderEngine:Listen("ExitChild","viewManager",function(parent)
     mUI.ViewManager:PopView()
-end)
+end,0)

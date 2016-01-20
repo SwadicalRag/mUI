@@ -46,15 +46,11 @@ mUI.RenderEngine:Listen("EnterChild","CircleStencil",function(tag)
     if tag.identifier == "Circle" then
         render.SetStencilCompareFunction(STENCILCOMPARISONFUNCTION_EQUAL)
         render.SetStencilPassOperation(STENCILOPERATION_REPLACE)
-
-        return true
     end
 end,0)
 
 mUI.RenderEngine:Listen("ExitChild","CircleStencil",function(tag)
     if tag.identifier == "Circle" then
         render.SetStencilEnable(false)
-
-        return true
     end
 end,0)

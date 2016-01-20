@@ -37,6 +37,10 @@ function self:registerRenderer(identifier,callback)
     self.renderers[identifier] = callback
 end
 
+function self:registerInternalTag(identifier)
+    self.renderers[identifier] = false
+end
+
 function self:protectedTagCall(tag,fn,...)
     return xpcall(fn,function(err)
         ErrorNoHalt("Unable to render "..tag.identifier.." at line "..tag.token.line.." col "..tag.token.col.."\n"..err.."\n")
@@ -52,6 +56,7 @@ function self:renderInternal(tag,template)
 end
 
 function self:walk(tag,template)
+    if self.renderers[tag.identifier] == false then return end
     self:protectedTagCall(tag,self.Emit,self,"PreRender",tag,template)
     self:renderInternal(tag,template)
     self:protectedTagCall(tag,self.Emit,self,"PostRender",tag,template)
