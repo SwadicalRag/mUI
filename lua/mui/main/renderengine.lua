@@ -2,15 +2,33 @@ local self = {}
 mUI.RenderEngine = self
 
 self.events = {}
-function self:Listen(event,id,callback)
+function self:Listen(event,id,callback,priority)
     self.events[event] = self.events[event] or {}
-    self.events[event][id] = callback
+
+    for _,data in ipairs(self.events[event]) do
+        if data.id == id then
+            data.callback = callback
+            data.priority = priority or 100
+            return
+        end
+    end
+
+    self.events[event][#self.events[event]+1] = {
+        callback = callback,
+        id = id,
+        priority = priority or 100
+    }
 end
 
 function self:Emit(event,...)
     self.events[event] = self.events[event] or {}
-    for id,listener in pairs(self.events[event]) do
-        listener(...)
+
+    table.sort(self.events[event],function(t1,t2)
+        return t1.priority < t2.priority
+    end)
+
+    for _,data in ipairs(self.events[event]) do
+        data.callback(...)
     end
 end
 
@@ -25,32 +43,31 @@ function self:protectedTagCall(tag,fn,...)
     end,...)
 end
 
-function self:renderInternal(tag)
+function self:renderInternal(tag,template)
     if self.renderers[tag.identifier] then
-        self:protectedTagCall(tag,self.renderers[tag.identifier],tag)
+        self:protectedTagCall(tag,self.renderers[tag.identifier],tag,template)
     else
         ErrorNoHalt("Unable to render "..tag.identifier.." at line "..tag.token.line.." col "..tag.token.col.."\n")
     end
 end
 
-function self:walk(tag)
-    self:protectedTagCall(tag,self.Emit,self,"SetupViewData",tag)
-    self:protectedTagCall(tag,self.Emit,self,"PreRender",tag)
-    self:renderInternal(tag)
-    self:protectedTagCall(tag,self.Emit,self,"PostRender",tag)
+function self:walk(tag,template)
+    self:protectedTagCall(tag,self.Emit,self,"PreRender",tag,template)
+    self:renderInternal(tag,template)
+    self:protectedTagCall(tag,self.Emit,self,"PostRender",tag,template)
 
     if tag.renderData.canRenderChildren then
-        self:protectedTagCall(tag,self.Emit,self,"EnterChild",tag)
+        self:protectedTagCall(tag,self.Emit,self,"EnterChild",tag,template)
         for _,child in ipairs(tag.children) do
-            self:walk(child)
+            self:walk(child,template)
         end
-        self:protectedTagCall(tag,self.Emit,self,"ExitChild",tag)
+        self:protectedTagCall(tag,self.Emit,self,"ExitChild",tag,template)
     end
 end
 
-function self:Render(template)
-    for _,child in ipairs(template.children) do
-        self:walk(child)
+function self:Render(base,template)
+    for _,child in ipairs(base.children) do
+        self:walk(child,template)
     end
     if #mUI.ViewManager.viewStack ~= 1 then error("View stack leak!!")mUI.ViewManager.viewStack = {mUI.ViewManager.defaultView} end
 end

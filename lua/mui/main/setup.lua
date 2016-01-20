@@ -1,4 +1,4 @@
-mUI.RenderEngine:Listen("SetupViewData","viewManager",function(tag)
+mUI.RenderEngine:Listen("PreRender","viewManager",function(tag)
     tag.renderData = {}
 
     if tag.attributes.left and tag.attributes.right then
@@ -29,7 +29,7 @@ mUI.RenderEngine:Listen("SetupViewData","viewManager",function(tag)
     if tag.attributes.color then
         tag.renderData.color = mUI.Parsers:Color(tag.attributes.color)
     end
-end)
+end,0)
 
 mUI.RenderEngine:Listen("EnterChild","viewManager",function(parent)
     mUI.ViewManager:PushView(parent.renderData.x,parent.renderData.y,parent.renderData.w,parent.renderData.h)

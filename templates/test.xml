@@ -17,5 +17,6 @@
             color="rgb(255, 255, 255)"
             font-vertical-align="center"
             font-horizontal-align="center">ARTS</Text>
+        <Avatar bottom="0px" left="0px" w="100px" h="100px" steamID64="76561198137637055" />
     </Box>
 </Box>

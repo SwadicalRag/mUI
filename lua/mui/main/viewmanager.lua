@@ -12,6 +12,11 @@ self.viewStack = {
     self.defaultView
 }
 
+function self:ResolutionChange(scrW,scrH)
+    self.defaultView.w = scrW
+    self.defaultView.h = scrH
+end
+
 function self:cancelView(view,newView)
     render.SetScissorRect(view.limit.x,view.limit.y,view.limit.x+view.limit.w,view.limit.y+view.limit.h,false)
     cam.End2D()
