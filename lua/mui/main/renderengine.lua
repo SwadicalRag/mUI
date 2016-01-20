@@ -28,7 +28,7 @@ function self:Emit(event,...)
     end)
 
     for _,data in ipairs(self.events[event]) do
-        data.callback(...)
+        if data.callback(...) then return end
     end
 end
 

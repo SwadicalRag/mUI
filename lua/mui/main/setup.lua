@@ -24,6 +24,15 @@ mUI.RenderEngine:Listen("PreRender","viewManager",function(tag)
         tag.renderData.h = mUI.Parsers:Size(tag.attributes.h,"h")
     end
 
+    if tag.attributes.radius then
+        tag.renderData.radius = mUI.Parsers:Size(tag.attributes.radius)
+        tag.renderData.x = tag.renderData.x - tag.renderData.radius
+        tag.renderData.y = tag.renderData.y - tag.renderData.radius
+        tag.renderData.w = tag.renderData.radius*2
+        tag.renderData.h = tag.renderData.radius*2
+    end
+
+
     tag.renderData.canRenderChildren = tag.renderData.x and tag.renderData.y and tag.renderData.w and tag.renderData.h and true
 
     if tag.attributes.color then

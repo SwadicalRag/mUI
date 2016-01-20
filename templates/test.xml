@@ -1,5 +1,5 @@
 <Box top="25%" left="25%" w="50%" h="50%" blur="5" color="rgba(0, 0, 0, 0.65)">
-    <Box top="25%" left="25%" w="50%" h="50%" color="rgba(0, 48, 255, 0.11)">
+    <Circle top="50%" left="50%" radius="50%" color="rgba(0, 48, 255, 0.11)">
         <Text
             font="Roboto"
             top="24%"
@@ -18,5 +18,5 @@
             font-vertical-align="center"
             font-horizontal-align="center">ARTS</Text>
         <Avatar bottom="0px" left="0px" w="100px" h="100px" steamID64="76561198137637055" />
-    </Box>
+    </Circle>
 </Box>
