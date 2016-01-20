@@ -2,19 +2,25 @@ mUI.RenderEngine:Listen("PreRender","viewManager",function(tag)
     tag.renderData = {}
 
     if tag.attributes.left and tag.attributes.right then
-        tag.renderData.x = mUI.ViewManager:GetCurrentView().w/2 - mUI.Parsers:Size(tag.attributes.left,"x") + mUI.Parsers:Size(tag.attributes.right,"x")
+        tag.renderData.x = tag.renderData.x or 0
+        tag.renderData.x = tag.renderData.x + mUI.ViewManager:GetCurrentView().w/2 - mUI.Parsers:Size(tag.attributes.left,"x") + mUI.Parsers:Size(tag.attributes.right,"x")
     elseif tag.attributes.left then
-        tag.renderData.x = mUI.Parsers:Size(tag.attributes.left,"x")
+        tag.renderData.x = tag.renderData.x or 0
+        tag.renderData.x = tag.renderData.x + mUI.Parsers:Size(tag.attributes.left,"x")
     elseif tag.attributes.right then
-        tag.renderData.x = mUI.ViewManager:GetCurrentView().w - mUI.Parsers:Size(tag.attributes.right,"x") - mUI.Parsers:Size(tag.attributes.w,"w")
+        tag.renderData.x = tag.renderData.x or 0
+        tag.renderData.x = tag.renderData.x + mUI.ViewManager:GetCurrentView().w - mUI.Parsers:Size(tag.attributes.right,"x") - mUI.Parsers:Size(tag.attributes.w,"w")
     end
 
     if tag.attributes.top and tag.attributes.bottom then
-        tag.renderData.x = mUI.ViewManager:GetCurrentView().h/2 - mUI.Parsers:Size(tag.attributes.top,"y") + mUI.Parsers:Size(tag.attributes.bottom,"y")
+        tag.renderData.y = tag.renderData.y or 0
+        tag.renderData.y = tag.renderData.y + mUI.ViewManager:GetCurrentView().h/2 - mUI.Parsers:Size(tag.attributes.top,"y") + mUI.Parsers:Size(tag.attributes.bottom,"y")
     elseif tag.attributes.top then
-        tag.renderData.y = mUI.Parsers:Size(tag.attributes.top,"y")
+        tag.renderData.y = tag.renderData.y or 0
+        tag.renderData.y = tag.renderData.y + mUI.Parsers:Size(tag.attributes.top,"y")
     elseif tag.attributes.bottom then
-        tag.renderData.y = mUI.ViewManager:GetCurrentView().h - mUI.Parsers:Size(tag.attributes.bottom,"y") - mUI.Parsers:Size(tag.attributes.h,"h")
+        tag.renderData.y = tag.renderData.y or 0
+        tag.renderData.y = tag.renderData.y + mUI.ViewManager:GetCurrentView().h - mUI.Parsers:Size(tag.attributes.bottom,"y") - mUI.Parsers:Size(tag.attributes.h,"h")
     end
 
     if tag.attributes.w then
@@ -37,6 +43,41 @@ mUI.RenderEngine:Listen("PreRender","viewManager",function(tag)
 
     if tag.attributes.color then
         tag.renderData.color = mUI.Parsers:Color(tag.attributes.color)
+    end
+
+    tag.renderData.consumedX = 0
+    tag.renderData.consumedY = 0
+
+    local child,parent = tag,tag.parent
+
+    local currentlyConsumedX = (child.renderData.x or 0) + (child.renderData.w or 0)
+    local currentlyConsumedY = (child.renderData.y or 0) + (child.renderData.h or 0)
+
+    if (parent.attributes.relative == "x") then
+        child.renderData.x = parent.renderData.consumedX
+    end
+
+    if (parent.attributes.relative == "y") then
+        child.renderData.y = parent.renderData.consumedY
+    end
+
+    if (child.attributes.ghosted ~= "1") and parent.renderData then
+        parent.renderData.consumedX = parent.renderData.consumedX + currentlyConsumedX
+        parent.renderData.consumedY = parent.renderData.consumedY + currentlyConsumedY
+    end
+
+    if tag.template.scrollOverrides and tag.template.scrollOverrides[tag.parent._id] then
+        local scrollOverride = tag.template.scrollOverrides[tag.parent._id]
+        tag.renderData.x = tag.renderData.x or 0
+        tag.renderData.x = tag.renderData.x + scrollOverride.x
+
+        tag.renderData.y = tag.renderData.y or 0
+        tag.renderData.y = tag.renderData.y + scrollOverride.y
+
+        if tag.scroller and (parent.identifier == "Scroll") then
+            tag.scroller.maxX = parent.renderData.consumedX
+            tag.scroller.maxY = parent.renderData.consumedY
+        end
     end
 end,0)
 

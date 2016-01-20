@@ -8,6 +8,7 @@ self.defaultView = {
     h = ScrH()
 }
 self.defaultView.limit = self.defaultView
+self.defaultView.real = self.defaultView
 self.viewStack = {
     self.defaultView
 }
@@ -41,6 +42,12 @@ end
 function self:PushView(x,y,w,h,limit)
     local currentView = self.viewStack[#self.viewStack]
     local newView = {
+        x = currentView.x + x,
+        y = currentView.y + y,
+        w = w,
+        h = h
+    }
+    newView.real = {
         x = currentView.x + x,
         y = currentView.y + y,
         w = w,

@@ -56,6 +56,7 @@ function self:renderInternal(tag,template)
 end
 
 function self:walk(tag,template)
+    tag.template = template
     if self.renderers[tag.identifier] == false then return end
     self:protectedTagCall(tag,self.Emit,self,"PreRender",tag,template)
     self:renderInternal(tag,template)
@@ -64,6 +65,7 @@ function self:walk(tag,template)
     if tag.renderData.canRenderChildren then
         self:protectedTagCall(tag,self.Emit,self,"EnterChild",tag,template)
         for _,child in ipairs(tag.children) do
+            self:protectedTagCall(tag,self.Emit,self,"OnChild",child,tag,template)
             self:walk(child,template)
         end
         self:protectedTagCall(tag,self.Emit,self,"ExitChild",tag,template)

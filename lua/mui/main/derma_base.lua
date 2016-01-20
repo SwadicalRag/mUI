@@ -43,7 +43,6 @@ end
 self.trapping = {}
 function self:trapInternal()
     local isTrapping = (self.trapping.cursor or self.trapping.keyboard)
-    print(self.trapping.internal,isTrapping)
     if self.trapping.internal ~= isTrapping then
         if isTrapping then
             self.basePanel:Show()
@@ -83,7 +82,6 @@ end
 self.cursor = "user"
 function self:SetCursor(cursor)
     if self.cursor ~= cursor then
-        print(cursor)
         self.basePanel:SetCursor(cursor)
         self.cursor = cursor
     end

@@ -23,16 +23,11 @@ function self:Size(str,axis)
 
     if size then
         if axis then
-            if axis == self:resolveAxes(axis) then
-                --size = size * mUI.ViewManager.defaultView[self:resolveAxes(axis)]
-                size = size * mUI.ViewManager:GetCurrentView()[self:resolveAxes(axis)]
-            else
-                size = size * mUI.ViewManager:GetCurrentView()[self:resolveAxes(axis)]
-            end
+            size = size * mUI.ViewManager:GetCurrentView().real[self:resolveAxes(axis)]
         else
             local currentView = mUI.ViewManager:GetCurrentView()
 
-            size = size * (currentView.x^2 + currentView.y^2)^0.5
+            size = size * (currentView.real.w^2 + currentView.real.h^2)^0.5
         end
 
         return size

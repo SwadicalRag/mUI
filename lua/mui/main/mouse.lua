@@ -56,10 +56,24 @@ function self:GetMouseTag()
     return tag
 end
 
+function self:Scrolled(step)
+    local active = self:GetMouseTag()
+    if active then
+        mUI.RenderEngine:Emit("Scrolled",active,step)
+    end
+end
+
 hook.Add("Move","swadical.mUI.cursor",function()
     mUI.RenderEngine:Emit("ProcessCursorEvents",self:GetMouseTag())
 end)
 
 hook.Add("PreRender","swadical.mUI.clearRenderStack",function()
     self:ClearStack()
+end)
+
+self.scrollStep = 2
+hook.Add("Move","swadical.mUI.scrollListener",function(clickedPanel,code)
+    if input.WasMousePressed(MOUSE_WHEEL_UP) or input.WasMousePressed(MOUSE_WHEEL_DOWN) then
+        self:Scrolled((input.WasMousePressed(MOUSE_WHEEL_UP) and 1 or -1) * self.scrollStep)
+    end
 end)

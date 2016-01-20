@@ -27,7 +27,7 @@ if SERVER then
 
             if lastModTime[filePath] ~= file.Time(path..fileName,loc) then
                 print("Autoupdated "..filePath)
-                TemplateFS:Write(fileName,file.Read(path..fileName,loc))
+                TemplateFS:Write("/templates/"..filePath,file.Read(path..fileName,loc))
 
                 local serialized = mUI.bON.serialize({
                     filePath = "/templates/"..filePath,
