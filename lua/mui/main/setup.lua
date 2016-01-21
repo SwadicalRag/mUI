@@ -45,6 +45,14 @@ mUI.RenderEngine:Listen("PreRender","viewManager",function(tag)
         tag.renderData.color = mUI.Parsers:Color(tag.attributes.color)
     end
 
+    if tag.attributes.bgColor then
+        tag.renderData.bgColor = mUI.Parsers:Color(tag.attributes.bgColor)
+    end
+
+    if tag.attributes.barColor then
+        tag.renderData.barColor = mUI.Parsers:Color(tag.attributes.barColor)
+    end
+
     tag.renderData.consumedX = 0
     tag.renderData.consumedY = 0
 
@@ -77,6 +85,8 @@ mUI.RenderEngine:Listen("PreRender","viewManager",function(tag)
         if tag.scroller and (parent.identifier == "Scroll") then
             tag.scroller.maxX = parent.renderData.consumedX
             tag.scroller.maxY = parent.renderData.consumedY
+            scrollOverride.maxX = parent.renderData.consumedX
+            scrollOverride.maxY = parent.renderData.consumedY
         end
     end
 end,0)

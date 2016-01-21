@@ -92,3 +92,8 @@ end
 function self:GetCurrentView()
     return self.viewStack[#self.viewStack]
 end
+
+function self:IsNullView()
+    local view = self:GetCurrentView()
+    return view.w == 0 or view.h == 0
+end

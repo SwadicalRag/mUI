@@ -59,6 +59,7 @@ function self:walk(tag,template)
     tag.template = template
     if self.renderers[tag.identifier] == false then return end
     self:protectedTagCall(tag,self.Emit,self,"PreRender",tag,template)
+    if mUI.ViewManager:IsNullView() then return end
     self:renderInternal(tag,template)
     self:protectedTagCall(tag,self.Emit,self,"PostRender",tag,template)
 
