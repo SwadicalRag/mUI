@@ -35,22 +35,26 @@ local function playerAnimate()
 	aDelta = CurTime()
 end
 
-local function getHeadEntity()
-    if pModel == LocalPlayer():GetModel() then return end
-    if IsValid(headEntity) then headEntity:Remove() end
-    headEntity = ents.CreateClientProp(LocalPlayer():GetModel())
-    pModel = LocalPlayer():GetModel()
-    headEntity:SetNoDraw(true)
+local function updateHeadEntity()
+    if pModel ~= LocalPlayer():GetModel() then
+        if IsValid(headEntity) then headEntity:Remove() end
+        headEntity = ents.CreateClientProp(LocalPlayer():GetModel())
+        pModel = LocalPlayer():GetModel()
+        headEntity:SetNoDraw(true)
+    end
     local bone = headEntity:LookupBone("ValveBiped.Bip01_Head1")
 
     headEntity:SetAngles(Angle(0,180,0))
     if bone then
-        renderPos,renderAng = headEntity:GetBonePosition(bone)
-        local headPos = renderPos
-        local offset = renderAng:Forward() + renderAng:Right() * 22
-        renderPos = headPos + offset
+        local nRenderPos,nRenderAng = headEntity:GetBonePosition(bone)
+        renderPos = renderPos or nRenderPos
+        renderAng = renderAng or nRenderAng
+        local headPos = nRenderPos
+        local offset = nRenderAng:Forward() * 5 + nRenderAng:Right() * 15
+        nRenderPos = headPos + offset
+        renderPos = renderPos + (nRenderPos-renderPos)*0.25
         renderAng = (headPos-renderPos):Angle()
-        renderFOV = 90
+        renderFOV = 75
     else
         -- fallback to spawnicon rendering mode
         local min,max = headEntity:GetRenderBounds()
@@ -67,12 +71,9 @@ local function getHeadEntity()
     headEntity:ResetSequence(lastSeq)
     playerAnimate()
 end
-timer.Create("swadical.mUI.refreshPlayerGhost",1,0,getHeadEntity)
-hook.Add("InitPostEntity","swadical.mUI.refreshPlayerGhost",getHeadEntity)
-hook.Add("Think","swadical.mUI.animatePlayer",playerAnimate)
 
 mUI.RenderEngine:registerRenderer("Portrait",function(tag)
-    PrintTable(tag.renderData)
+    updateHeadEntity()
     cam.Start3D(renderPos,renderAng,renderFOV,tag.renderData.x-tag.renderData.w/2+mUI.ViewManager:GetCurrentView().x,tag.renderData.y-tag.renderData.h/2+mUI.ViewManager:GetCurrentView().y,tag.renderData.w+renderScale,tag.renderData.h+renderScale)
         cam.IgnoreZ(true)
         render.SuppressEngineLighting(true)
