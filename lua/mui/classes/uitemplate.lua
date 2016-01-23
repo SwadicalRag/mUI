@@ -138,3 +138,18 @@ end
 function self:SetManualUpdated(status)
     self.ManuallyUpdated = status
 end
+
+self.ClickListeners = {}
+function self:MouseEvent(tag,enum)
+    if tag.attributes.id and self.ClickListeners["#"..tag.attributes.id] then
+        self.ClickListeners["#"..tag.attributes.id](enum)
+    elseif tag.attributes.class and self.ClickListeners["."..tag.attributes.class] then
+        self.ClickListeners["."..tag.attributes.class](enum)
+    elseif self.ClickListeners[tag.identifier] then
+        self.ClickListeners[tag.identifier](enum)
+    end
+end
+
+function self:OnClick(query,callback)
+    self.ClickListeners[query] = callback
+end

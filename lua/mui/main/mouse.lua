@@ -72,8 +72,23 @@ hook.Add("PreRender","swadical.mUI.clearRenderStack",function()
 end)
 
 self.scrollStep = 2
-hook.Add("Move","swadical.mUI.scrollListener",function(clickedPanel,code)
+hook.Add("Move","swadical.mUI.scrollListener",function()
     if input.WasMousePressed(MOUSE_WHEEL_UP) or input.WasMousePressed(MOUSE_WHEEL_DOWN) then
         self:Scrolled((input.WasMousePressed(MOUSE_WHEEL_UP) and 1 or -1) * self.scrollStep)
     end
+end)
+
+function self:MouseEvent(enum)
+    if input.WasMousePressed(enum) then
+        local active = self:GetMouseTag()
+        if active then
+            mUI.RenderEngine:Emit("MouseEvent",active,enum)
+        end
+    end
+end
+
+hook.Add("Move","swadical.mUI.clickListener",function()
+    self:MouseEvent(MOUSE_LEFT)
+    self:MouseEvent(MOUSE_RIGHT)
+    self:MouseEvent(MOUSE_MIDDLE)
 end)

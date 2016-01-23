@@ -10,7 +10,7 @@ mUI.RenderEngine:Listen("PreRender","viewManager",function(tag,template)
     -- x from tag
     if tag.attributes.left and tag.attributes.right then
         tag.renderData.x = tag.renderData.x or 0
-        tag.renderData.x = tag.renderData.x + mUI.ViewManager:GetCurrentView().w/2 - mUI.Parsers:Size(tag.attributes.left,"x") + mUI.Parsers:Size(tag.attributes.right,"x")
+        tag.renderData.x = tag.renderData.x + mUI.ViewManager:GetCurrentView().w/2 - mUI.Parsers:Size(tag.attributes.w,"w")/2 - mUI.Parsers:Size(tag.attributes.left,"x") + mUI.Parsers:Size(tag.attributes.right,"x")
     elseif tag.attributes.left then
         tag.renderData.x = tag.renderData.x or 0
         tag.renderData.x = tag.renderData.x + mUI.Parsers:Size(tag.attributes.left,"x")
@@ -22,7 +22,7 @@ mUI.RenderEngine:Listen("PreRender","viewManager",function(tag,template)
     -- y from tag
     if tag.attributes.top and tag.attributes.bottom then
         tag.renderData.y = tag.renderData.y or 0
-        tag.renderData.y = tag.renderData.y + mUI.ViewManager:GetCurrentView().h/2 - mUI.Parsers:Size(tag.attributes.top,"y") + mUI.Parsers:Size(tag.attributes.bottom,"y")
+        tag.renderData.y = tag.renderData.y + mUI.ViewManager:GetCurrentView().h/2 - mUI.Parsers:Size(tag.attributes.h,"h")/2 - mUI.Parsers:Size(tag.attributes.top,"y") + mUI.Parsers:Size(tag.attributes.bottom,"y")
     elseif tag.attributes.top then
         tag.renderData.y = tag.renderData.y or 0
         tag.renderData.y = tag.renderData.y + mUI.Parsers:Size(tag.attributes.top,"y")
@@ -116,3 +116,7 @@ end,0)
 mUI.RenderEngine:Listen("ExitChild","viewManager",function(parent)
     mUI.ViewManager:PopView()
 end,0)
+
+mUI.RenderEngine:Listen("MouseEvent","templateTrigger",function(tag,enum)
+    tag.template:MouseEvent(tag,enum)
+end)

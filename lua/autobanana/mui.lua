@@ -15,6 +15,7 @@ if CLIENT then
     mUI.Loader:LoadFolder("/mui/classes/")
     mUI.Loader:LoadFile("/mui/main/init.lua")
 else
+    mUI.Loader:LoadFile("/mui/resource.lua")
     mUI.Loader:ShareFolderRecursive("/mUI/main/")
     mUI.Loader:ShareFolder("/mUI/classes/")
 end
