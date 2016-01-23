@@ -1,8 +1,12 @@
 mUI.RenderEngine:registerRenderer("Box",function(tag)
     mUI.MouseUtils:PushRect(tag,tag.renderData.x,tag.renderData.y,tag.renderData.w,tag.renderData.h)
-    draw.NoTexture()
-    surface.SetDrawColor(tag.renderData.color)
-    surface.DrawRect(tag.renderData.x,tag.renderData.y,tag.renderData.w,tag.renderData.h)
+    if tag.attributes.round then
+        draw.RoundedBox(mUI.ArithmeticParser:Evaluate(tag.attributes.round),tag.renderData.x,tag.renderData.y,tag.renderData.w,tag.renderData.h,tag.renderData.color)
+    else
+        draw.NoTexture()
+        surface.SetDrawColor(tag.renderData.color)
+        surface.DrawRect(tag.renderData.x,tag.renderData.y,tag.renderData.w,tag.renderData.h)
+    end
 end)
 
 
@@ -29,7 +33,7 @@ mUI.RenderEngine:registerRenderer("Circle",function(tag)
 end)
 
 mUI.RenderEngine:Listen("PreRender","CircleStencil",function(tag)
-    if tag.identifier == "Circle" then
+    if tag.identifier == "Circle" or tag.attributes.round then
         render.ClearStencil()
         render.SetStencilEnable(true)
 
@@ -43,14 +47,14 @@ mUI.RenderEngine:Listen("PreRender","CircleStencil",function(tag)
 end)
 
 mUI.RenderEngine:Listen("EnterChild","CircleStencil",function(tag)
-    if tag.identifier == "Circle" then
+    if tag.identifier == "Circle" or tag.attributes.round then
         render.SetStencilCompareFunction(STENCILCOMPARISONFUNCTION_EQUAL)
         render.SetStencilPassOperation(STENCILOPERATION_REPLACE)
     end
 end,0)
 
 mUI.RenderEngine:Listen("ExitChild","CircleStencil",function(tag)
-    if tag.identifier == "Circle" then
+    if tag.identifier == "Circle" or tag.attributes.round then
         render.SetStencilEnable(false)
     end
 end,0)

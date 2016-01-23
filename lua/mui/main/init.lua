@@ -10,3 +10,5 @@ mUI.Loader:LoadFile("/mui/main/derma_base.lua")
 mUI.Loader:LoadFolderRecursive("/mui/main/renderers/")
 
 mUI.Loader:LoadFile("/mui/main/setup.lua")
+mUI.Loader:LoadFile("/mui/main/animate.lua")
+mUI.Animate:hook()

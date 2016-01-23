@@ -25,6 +25,7 @@ end
 
 function self:Render()
     if self.Visible then
+        if not self.ManuallyUpdated then self:Update() end
         return mUI.RenderEngine:Render(self.AST,self)
     end
 end
@@ -110,4 +111,30 @@ function self:ForEachTag(query,callback)
     for _,tag in ipairs(results) do
         callback(tag)
     end
+end
+
+self.tagOverride = {}
+function self:GetAttribute(query,attr)
+    local tag = self:FindTags(query)[1]
+
+    if tag then
+        if self.tagOverride[tag._id] then
+            return self.tagOverride[tag._id][attr] or tag.attributes[attr]
+        else
+            return tag.attributes[attr]
+        end
+    else
+        return false
+    end
+end
+
+function self:SetAttribute(query,attr,val)
+    self:ForEachTag(query,function(tag)
+        self.tagOverride[tag._id] = self.tagOverride[tag._id] or {}
+        self.tagOverride[tag._id][attr] = val
+    end)
+end
+
+function self:SetManualUpdated(status)
+    self.ManuallyUpdated = status
 end
