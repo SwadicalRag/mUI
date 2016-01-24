@@ -36,7 +36,7 @@ if SERVER then
                 local compressed = util.Compress(serialized)
 
                 net.Start("swadical.mUI.templateRefresh")
-                    net.WriteData(compressed,#compressed)
+                    net.WriteData(compressed,#compressed+10)
                 net.Broadcast()
             end
 
@@ -66,17 +66,17 @@ if SERVER then
         local compressed = util.Compress(serialized)
 
         net.Start("swadical.mUI.templateSender")
-            net.WriteData(compressed,#compressed)
+            net.WriteData(compressed,#compressed+10)
         net.Send(ply)
     end)
 else
     net.Receive("swadical.mUI.templateSender",function(len)
-        mUI.FS = mUI.TFS.FromData(mUI.bON.deserialize(util.Decompress(net.ReadData(len))))
+        mUI.FS = mUI.TFS.FromData(mUI.bON.deserialize(util.Decompress(net.ReadData(len+10))))
         hook.Run("mUI.Ready",mUI)
     end)
 
     net.Receive("swadical.mUI.templateRefresh",function(len)
-        local update = mUI.bON.deserialize(util.Decompress(net.ReadData(len)))
+        local update = mUI.bON.deserialize(util.Decompress(net.ReadData(len+10)))
         mUI.FS:Write(update.filePath,update.data)
         hook.Run("mUI.Update",update.filePath)
     end)
