@@ -143,9 +143,11 @@ self.ClickListeners = {}
 function self:MouseEvent(tag,enum)
     if tag.attributes.id and self.ClickListeners["#"..tag.attributes.id] then
         self.ClickListeners["#"..tag.attributes.id](tag,enum)
-    elseif tag.attributes.class and self.ClickListeners["."..tag.attributes.class] then
+    end
+    if tag.attributes.class and self.ClickListeners["."..tag.attributes.class] then
         self.ClickListeners["."..tag.attributes.class](tag,enum)
-    elseif self.ClickListeners[tag.identifier] then
+    end
+    if self.ClickListeners[tag.identifier] then
         self.ClickListeners[tag.identifier](tag,enum)
     end
 end
