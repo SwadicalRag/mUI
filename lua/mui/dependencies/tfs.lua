@@ -289,7 +289,7 @@ function TFS.lib.deepCopy(tbl,new,lookup)
 	lookup = lookup or {[tbl]=new}
 
 	local meta = getmetatable(tbl)
-	if meta then setmetatable(new,TFS.lib.deepCopy(meta),{},lookup) end
+	if meta then setmetatable(new,TFS.lib.deepCopy(meta,{},lookup)) end
 
 	for k,v in pairs(tbl) do
 		if(type(k) == "table") then
